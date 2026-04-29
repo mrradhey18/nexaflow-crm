@@ -1662,14 +1662,14 @@ img { -webkit-user-drag: none; }
           <label>Phone Number</label>
           <div class="input-with-icon">
             <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6z"/></svg>
-            <input type="tel" id="lead-phone" placeholder="+91 XXXXX XXXXX">
+            <input type="tel" id="lead-phone" placeholder="XXXXX XXXXX" value="+91 ">
           </div>
         </div>
         <div class="form-group">
           <label>WhatsApp Number</label>
           <div class="input-with-icon">
             <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg>
-            <input type="tel" id="lead-wapp" placeholder="+91 XXXXX XXXXX">
+            <input type="tel" id="lead-wapp" placeholder="XXXXX XXXXX" value="+91 ">
           </div>
         </div>
       </div>
@@ -2008,12 +2008,12 @@ document.getElementById('app-loader').style.display = 'flex';
 fetchAllFromSupabase().then(() => {
     console.log('✅ Fetch complete. state.sales:', state.sales);
     console.log('✅ state.sales length:', (state.sales || []).length);
-
-    renderHome();
-    renderLeads();
-    renderSuspended();
-    renderContacts();
-    renderSales();
+renderHome();
+renderLeads();
+renderLeadsStats();
+renderSuspended();
+renderContacts();
+renderSales();
     loadProfileUI();
     updateSidebarUser();  // ← add this line
 
@@ -2112,7 +2112,7 @@ function showPage(id, btn) {
   const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashboard:'Dashboard', contacts:'Contacts', settings:'Settings' };
   document.getElementById('page-title').textContent = titles[id] || id;
   if (id === 'home') renderHome();
-  if (id === 'leads') renderLeads();
+if (id === 'leads') { renderLeads(); renderLeadsStats(); }
   if (id === 'suspended') renderSuspended();
   if (id === 'contacts') renderContacts();
   if (id === 'sales') renderSales();
@@ -2376,8 +2376,8 @@ let leadsFilter = 'all';
 
 let leadsPage = 1;
 const LEADS_PER_PAGE = 10;
-
 function renderLeads() {
+    renderLeadsStats();
   const statuses = ['all','not_escalated','outreach_wapp','outreach_call','prospecting','payment','followup','converted'];
   const statusLabels = { all:'All', not_escalated:'Not Escalated', outreach_wapp:'Wapp', outreach_call:'Call', prospecting:'Prospecting', payment:'Payment', followup:'Follow-up', converted:'Converted' };
   const filterEl = document.getElementById('leads-filter');
@@ -2548,8 +2548,9 @@ function openLeadModal(id) {
       document.getElementById('lead-followup-date').value = l.followupDate || '';
     }
   } else {
-    document.getElementById('modal-lead').querySelectorAll('input,select,textarea').forEach(el => { if (el.id !== 'lead-website' && el.id !== 'lead-report') el.value = ''; });
-    document.getElementById('lead-website').value = 'yes';
+   document.getElementById('modal-lead').querySelectorAll('input,select,textarea').forEach(el => { if (el.id !== 'lead-website' && el.id !== 'lead-report') el.value = ''; });
+    document.getElementById('lead-phone').value = '+91 ';
+    document.getElementById('lead-wapp').value = '+91 ';
     document.getElementById('lead-report').value = 'no';
    setLeadStatus('not_escalated');
     document.getElementById('followup-date-row').style.display = 'none';
@@ -2646,9 +2647,10 @@ async function saveLead(createAnother = false) {
   }
 
 save();
-  renderLeads();
-  renderSuspended();
-  renderHome();
+renderLeads();
+renderSuspended();
+renderHome();
+renderLeadsStats();
   if (createAnother) {
     // Reset form for next lead
     document.getElementById('lead-edit-id').value = '';
