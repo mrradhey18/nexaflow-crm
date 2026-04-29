@@ -2003,6 +2003,16 @@ document.getElementById('app-loader').style.display = 'flex';
   applyLogo(true);
   updateSidebarUser();
   loadProfileUI();
+  // Phone duplicate detection
+  document.getElementById('lead-phone').addEventListener('blur', async function() {
+    const editId = document.getElementById('lead-edit-id').value;
+    const match = await checkDuplicatePhone(this.value, editId || null);
+    if (match) showDuplicateWarning(match);
+    else { const w = document.getElementById('duplicate-warning'); if(w) w.remove(); }
+  });
+  document.getElementById('lead-phone').addEventListener('input', function() {
+    const w = document.getElementById('duplicate-warning'); if(w) w.remove();
+  });
   startAutoRefresh();
 
 fetchAllFromSupabase().then(() => {
@@ -2515,6 +2525,72 @@ function statusLabel(s) {
   return m[s] || s;
 }
 
+// ── DUPLICATE PHONE CHECK ──
+async function checkDuplicatePhone(phone, excludeId = null) {
+  if (!phone || phone === '+91' || phone.replace(/\D/g,'').length < 7) return null;
+  const normalized = phone.replace(/\D/g,'');
+
+  // Check local state first
+  const localMatch = state.leads.find(l =>
+    l.id !== excludeId &&
+    l.phone && l.phone.replace(/\D/g,'') === normalized
+  );
+  if (localMatch) return localMatch;
+
+  // Check Supabase for multi-device sync
+  const { supaUrl, supaKey } = state.settings;
+  if (!supaKey) return null;
+  try {
+    const res = await fetch(
+      `${supaUrl}/rest/v1/leads?phone=eq.${encodeURIComponent(phone)}&limit=5`,
+      { headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey } }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    const remote = rows.find(r => r.id !== excludeId && r.phone?.replace(/\D/g,'') === normalized);
+    if (remote) return { id: remote.id, name: remote.name, status: remote.status, phone: remote.phone };
+  } catch(e) { console.error('Duplicate check error:', e); }
+  return null;
+}
+
+function showDuplicateWarning(lead) {
+  const existing = document.getElementById('duplicate-warning');
+  if (existing) existing.remove();
+
+  const div = document.createElement('div');
+  div.id = 'duplicate-warning';
+  div.style.cssText = `
+    display:flex;align-items:flex-start;gap:10px;
+    padding:12px 14px;margin:12px 0 0;
+    background:#f59e0b14;border:1px solid #f59e0b55;
+    border-radius:10px;animation:fadeIn .2s ease;
+  `;
+  div.innerHTML = `
+    <svg fill="none" stroke="#f59e0b" viewBox="0 0 24 24" style="width:18px;height:18px;flex-shrink:0;margin-top:1px;stroke-width:2">
+      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600;color:#f59e0b;margin-bottom:3px">Duplicate phone number!</div>
+      <div style="font-size:12px;color:var(--text2)">
+        This number already belongs to
+        <strong style="color:var(--text)">${esc(lead.name)}</strong>
+        <span class="status-pill ${statusClass(lead.status)}" style="font-size:10.5px;padding:1px 7px;margin-left:4px">${statusLabel(lead.status)}</span>
+      </div>
+      <button onclick="closeModal('modal-lead');editLead('${lead.id}')"
+        style="margin-top:8px;font-size:11.5px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">
+        Open existing lead →
+      </button>
+    </div>
+    <button onclick="document.getElementById('duplicate-warning').remove()"
+      style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:0;flex-shrink:0">×</button>
+  `;
+
+  // Insert after phone field row
+  const phoneRow = document.getElementById('lead-phone').closest('.form-row');
+  phoneRow.after(div);
+}
+
 // ── LEAD CRUD ──
 function openQuickModal(type) {
   if (type === 'lead') openLeadModal();
@@ -2576,8 +2652,16 @@ function onStatusChange(e) {
 async function saveLead(createAnother = false) {
   const name = document.getElementById('lead-name').value.trim();
   if (!name) { toast('Lead name is required'); return; }
-  const status = document.querySelector('input[name="lead-status"]:checked')?.value || 'not_escalated';
   const editId = document.getElementById('lead-edit-id').value;
+
+  // Duplicate phone guard
+  const phoneVal = document.getElementById('lead-phone').value.trim();
+  const dupLead = await checkDuplicatePhone(phoneVal, editId || null);
+  if (dupLead) {
+    showDuplicateWarning(dupLead);
+    if (!confirm(`⚠️ "${dupLead.name}" already has this phone number.\n\nSave anyway?`)) return;
+  }
+  const status = document.querySelector('input[name="lead-status"]:checked')?.value || 'not_escalated';
 
   const lead = {
     id: editId || uid(),
@@ -4318,7 +4402,7 @@ function startAutoRefresh() {
     renderSuspended();
     renderContacts();
     renderSales();
-  }, 120000);
+  }, 180000);
 }
 
 </script>
