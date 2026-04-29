@@ -1797,7 +1797,7 @@ img { -webkit-user-drag: none; }
     <div class="form-row">
       <div class="form-group">
         <label>Phone</label>
-        <input type="tel" id="call-phone" placeholder="+91XXXXXXXXXX">
+        <input type="tel" id="call-phone" placeholder="+91XXXXX XXXXX">
       </div>
       <div class="form-group">
         <label>Time</label>
@@ -1838,7 +1838,7 @@ img { -webkit-user-drag: none; }
       </div>
       <div class="form-group">
         <label>Phone</label>
-        <input type="tel" id="contact-phone" placeholder="+91XXXXXXXXXX">
+        <input type="tel" id="contact-phone" placeholder="+91XXXXX XXXXX">
       </div>
     </div>
     <div class="form-row">
@@ -1848,7 +1848,7 @@ img { -webkit-user-drag: none; }
       </div>
       <div class="form-group">
         <label>WhatsApp</label>
-        <input type="tel" id="contact-wapp" placeholder="+91XXXXXXXXXX">
+        <input type="tel" id="contact-wapp" placeholder="+91XXXXX XXXXX">
       </div>
     </div>
     <div class="form-row full">
@@ -2549,8 +2549,8 @@ function openLeadModal(id) {
     }
   } else {
    document.getElementById('modal-lead').querySelectorAll('input,select,textarea').forEach(el => { if (el.id !== 'lead-website' && el.id !== 'lead-report') el.value = ''; });
-    document.getElementById('lead-phone').value = '+91 ';
-    document.getElementById('lead-wapp').value = '+91 ';
+    document.getElementById('lead-phone').value = '+91';
+    document.getElementById('lead-wapp').value = '+91';
     document.getElementById('lead-report').value = 'no';
    setLeadStatus('not_escalated');
     document.getElementById('followup-date-row').style.display = 'none';
@@ -2658,13 +2658,15 @@ renderLeadsStats();
     document.getElementById('modal-lead').querySelectorAll('input,select,textarea').forEach(el => {
       if (el.id !== 'lead-website' && el.id !== 'lead-report') el.value = '';
     });
-    document.getElementById('lead-website').value = 'yes';
-    document.getElementById('lead-report').value = 'no';
-    document.getElementById('sale-amount-row').style.display = 'none';
-    document.getElementById('followup-date-row').style.display = 'none';
-    setLeadStatus('not_escalated');
-    toast('Lead saved! Form ready for next lead ✚');
-    document.getElementById('lead-name').focus();
+document.getElementById('lead-website').value = 'yes';
+document.getElementById('lead-report').value = 'no';
+document.getElementById('sale-amount-row').style.display = 'none';
+document.getElementById('followup-date-row').style.display = 'none';
+document.getElementById('lead-phone').value = '+91';
+document.getElementById('lead-wapp').value = '+91';
+setLeadStatus('not_escalated');
+toast('Lead saved! Form ready for next lead ✚');
+document.getElementById('lead-name').focus();
   } else {
     closeModal('modal-lead');
     toast(editId ? 'Lead updated' : 'Lead created');
