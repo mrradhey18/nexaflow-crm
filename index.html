@@ -1311,6 +1311,20 @@ img { -webkit-user-drag: none; }
 
     <!-- LEADS PAGE -->
     <div class="page" id="page-leads">
+      <div class="stats-row" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
+  <div class="stat-card green">
+    <div class="stat-label">Leads Added Today</div>
+    <div class="stat-value" id="leads-added-today">0</div>
+    <div class="stat-sub" id="leads-added-today-sub">today</div>
+    <div class="stat-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg></div>
+  </div>
+  <div class="stat-card amber">
+    <div class="stat-label">Escalated Today</div>
+    <div class="stat-value" id="leads-escalated-today">0</div>
+    <div class="stat-sub" id="leads-escalated-today-sub">moved from Not Escalated</div>
+    <div class="stat-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></svg></div>
+  </div>
+</div>
       <div class="section">
         <div class="section-head">
           <div class="section-title">
@@ -1706,9 +1720,19 @@ img { -webkit-user-drag: none; }
       </div>
     </div>
 
-    <div class="modal-actions">
+   <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-lead')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveLead()">Save Lead</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn btn-primary" onclick="saveLead(false)">Save Lead</button>
+        <button onclick="saveLead(true)" title="Save & Create Another" style="width:36px;height:36px;border-radius:8px;background:var(--accent-soft);border:1px solid var(--accent)33;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;flex-shrink:0" onmouseover="this.style.background='var(--accent)';this.querySelector('svg').style.stroke='#fff'" onmouseout="this.style.background='var(--accent-soft)';this.querySelector('svg').style.stroke='var(--accent)'">
+          <svg fill="none" stroke="var(--accent)" viewBox="0 0 24 24" style="width:16px;height:16px;stroke-width:2;transition:stroke .18s">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            <line x1="19" y1="1" x2="19" y2="7"/>
+            <line x1="16" y1="4" x2="22" y2="4"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -2350,6 +2374,9 @@ renderLeadsPie();
 // ── LEADS ──
 let leadsFilter = 'all';
 
+let leadsPage = 1;
+const LEADS_PER_PAGE = 10;
+
 function renderLeads() {
   const statuses = ['all','not_escalated','outreach_wapp','outreach_call','prospecting','payment','followup','converted'];
   const statusLabels = { all:'All', not_escalated:'Not Escalated', outreach_wapp:'Wapp', outreach_call:'Call', prospecting:'Prospecting', payment:'Payment', followup:'Follow-up', converted:'Converted' };
@@ -2357,26 +2384,33 @@ function renderLeads() {
   filterEl.innerHTML = statuses.map(s => `<button class="filter-btn ${leadsFilter === s ? 'active' : ''}" onclick="setLeadsFilter('${s}')">${statusLabels[s]}</button>`).join('');
 
   const filtered = state.leads.filter(l => l.status !== 'suspended' && (leadsFilter === 'all' || l.status === leadsFilter));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / LEADS_PER_PAGE));
+  if (leadsPage > totalPages) leadsPage = totalPages;
+
+  const start = (leadsPage - 1) * LEADS_PER_PAGE;
+  const paginated = filtered.slice(start, start + LEADS_PER_PAGE);
+
   const tb = document.getElementById('leads-tbody');
 
   if (!filtered.length) {
     tb.innerHTML = `<tr><td colspan="9"><div class="empty-state"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><p>No leads found</p></div></td></tr>`;
+    renderLeadsPagination(0, 1);
     return;
   }
 
   const webIcons = { yes: '✅', no: '❌', not_working: '⚠️' };
 
-tb.innerHTML = filtered.map(l => `
+  tb.innerHTML = paginated.map(l => `
     <tr oncontextmenu="openStatusMenu(event,'${l.id}')" style="cursor:context-menu">
       <td class="td-name">
-  ${l.note ? `<span style="position:relative;display:inline-flex;align-items:center;gap:6px">
-    <span class="note-icon-wrap" style="position:relative;display:inline-flex">
-      <svg fill="none" stroke="var(--accent)" viewBox="0 0 24 24" style="width:13px;height:13px;flex-shrink:0;cursor:pointer" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      <span style="display:none;position:absolute;bottom:calc(100% + 6px);left:0;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text2);white-space:pre-wrap;max-width:220px;min-width:120px;box-shadow:var(--shadow);z-index:999;line-height:1.5;font-weight:400" class="note-tooltip">${esc(l.note)}</span>
-    </span>
-    ${esc(l.name)}
-  </span>` : esc(l.name)}
-</td>
+        ${l.note ? `<span style="position:relative;display:inline-flex;align-items:center;gap:6px">
+          <span class="note-icon-wrap" style="position:relative;display:inline-flex">
+            <svg fill="none" stroke="var(--accent)" viewBox="0 0 24 24" style="width:13px;height:13px;flex-shrink:0;cursor:pointer" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span style="display:none;position:absolute;bottom:calc(100% + 6px);left:0;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text2);white-space:pre-wrap;max-width:220px;min-width:120px;box-shadow:var(--shadow);z-index:999;line-height:1.5;font-weight:400" class="note-tooltip">${esc(l.note)}</span>
+          </span>
+          ${esc(l.name)}
+        </span>` : esc(l.name)}
+      </td>
       <td><span class="status-pill ${statusClass(l.status)}">${statusLabel(l.status)}</span></td>
       <td>${l.phone ? `<a href="tel:${esc(l.phone)}" style="color:var(--text2);text-decoration:none">${esc(l.phone)}</a>` : '—'}</td>
       <td>${l.city ? esc(l.city) : '—'}</td>
@@ -2400,9 +2434,52 @@ tb.innerHTML = filtered.map(l => `
         </div>
       </td>
     </tr>`).join('');
+
+  renderLeadsPagination(filtered.length, totalPages);
 }
 
-function setLeadsFilter(f) { leadsFilter = f; renderLeads(); }
+function renderLeadsPagination(total, totalPages) {
+  const existing = document.getElementById('leads-pagination');
+  if (existing) existing.remove();
+
+  const container = document.createElement('div');
+  container.id = 'leads-pagination';
+  container.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)';
+
+  const start = total === 0 ? 0 : (leadsPage - 1) * LEADS_PER_PAGE + 1;
+  const end = Math.min(leadsPage * LEADS_PER_PAGE, total);
+
+  container.innerHTML = `
+    <div style="font-size:12px;color:var(--text3)">
+      Showing <span style="color:var(--text);font-weight:600">${start}–${end}</span> of <span style="color:var(--text);font-weight:600">${total}</span> leads
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="icon-btn" onclick="goLeadsPage(${leadsPage - 1})" ${leadsPage <= 1 ? 'disabled style="opacity:0.3;cursor:not-allowed"' : ''}>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
+      </button>
+      <div style="display:flex;gap:4px">
+        ${Array.from({length: totalPages}, (_, i) => i + 1).map(p => `
+          <button onclick="goLeadsPage(${p})" style="width:28px;height:28px;border-radius:6px;border:1px solid ${p === leadsPage ? 'var(--accent)' : 'var(--border)'};background:${p === leadsPage ? 'var(--accent)' : 'transparent'};color:${p === leadsPage ? '#fff' : 'var(--text2)'};font-size:12px;font-weight:600;cursor:pointer;transition:all .18s">${p}</button>
+        `).join('')}
+      </div>
+      <button class="icon-btn" onclick="goLeadsPage(${leadsPage + 1})" ${leadsPage >= totalPages ? 'disabled style="opacity:0.3;cursor:not-allowed"' : ''}>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg>
+      </button>
+    </div>`;
+
+  document.querySelector('#page-leads .section').appendChild(container);
+}
+
+function goLeadsPage(page) {
+  const filtered = state.leads.filter(l => l.status !== 'suspended' && (leadsFilter === 'all' || l.status === leadsFilter));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / LEADS_PER_PAGE));
+  if (page < 1 || page > totalPages) return;
+  leadsPage = page;
+  renderLeads();
+  document.querySelector('#page-leads').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function setLeadsFilter(f) { leadsFilter = f; leadsPage = 1; renderLeads(); }
 
 function renderSuspended() {
   const suspended = state.leads.filter(l => l.status === 'suspended');
@@ -2495,7 +2572,7 @@ function onStatusChange(e) {
   document.getElementById('followup-date-row').style.display = val === 'followup' ? '' : 'none';
 }
 
-async function saveLead() {
+async function saveLead(createAnother = false) {
   const name = document.getElementById('lead-name').value.trim();
   if (!name) { toast('Lead name is required'); return; }
   const status = document.querySelector('input[name="lead-status"]:checked')?.value || 'not_escalated';
@@ -2568,12 +2645,28 @@ async function saveLead() {
     state.leads.push(localLead);
   }
 
-  save();
-  closeModal('modal-lead');
+save();
   renderLeads();
   renderSuspended();
   renderHome();
-  toast(editId ? 'Lead updated' : 'Lead created');
+  if (createAnother) {
+    // Reset form for next lead
+    document.getElementById('lead-edit-id').value = '';
+    document.getElementById('lead-modal-title').textContent = 'Create Lead';
+    document.getElementById('modal-lead').querySelectorAll('input,select,textarea').forEach(el => {
+      if (el.id !== 'lead-website' && el.id !== 'lead-report') el.value = '';
+    });
+    document.getElementById('lead-website').value = 'yes';
+    document.getElementById('lead-report').value = 'no';
+    document.getElementById('sale-amount-row').style.display = 'none';
+    document.getElementById('followup-date-row').style.display = 'none';
+    setLeadStatus('not_escalated');
+    toast('Lead saved! Form ready for next lead ✚');
+    document.getElementById('lead-name').focus();
+  } else {
+    closeModal('modal-lead');
+    toast(editId ? 'Lead updated' : 'Lead created');
+  }
 }
 
 function editLead(id) { openLeadModal(id); }
@@ -3637,6 +3730,30 @@ async function applyQuickStatus(newStatus) {
 
   const oldStatus = lead.status;
   lead.status = newStatus;
+  // Track escalation if moving FROM not_escalated
+  if (oldStatus === 'not_escalated' && newStatus !== 'not_escalated') {
+    const { supaUrl, supaKey } = state.settings;
+    if (supaKey) {
+      fetch(`${supaUrl}/rest/v1/lead_escalations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supaKey,
+          'Authorization': 'Bearer ' + supaKey,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          id: uid(),
+          lead_id: lead.id,
+          lead_name: lead.name,
+          from_status: oldStatus,
+          to_status: newStatus,
+          escalated_at: new Date().toISOString(),
+          user_email: state.user?.email || ''
+        })
+      }).catch(e => console.error('Escalation save error:', e));
+    }
+  }
 
 // If converting, require sale amount
   if (newStatus === 'converted' && oldStatus !== 'converted') {
@@ -4156,6 +4273,34 @@ function triggerCoinAnimation() {
   coin.style.animation = 'none';
   coin.offsetHeight; // reflow
   coin.style.animation = 'coinFloat 0.8s ease-out forwards';
+}
+
+async function renderLeadsStats() {
+  const today = todayISO();
+
+  // Leads added today — from local state
+  const addedToday = state.leads.filter(l => l.createdAt && l.createdAt.slice(0,10) === today);
+  const addedEl = document.getElementById('leads-added-today');
+  const addedSubEl = document.getElementById('leads-added-today-sub');
+  if (addedEl) addedEl.textContent = addedToday.length;
+  if (addedSubEl) addedSubEl.textContent = addedToday.length === 1 ? '1 lead added' : addedToday.length + ' leads added';
+
+  // Escalations today — from Supabase
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      const res = await fetch(`${supaUrl}/rest/v1/lead_escalations?escalated_at=gte.${today}T00:00:00&order=escalated_at.desc`, {
+        headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        const escEl = document.getElementById('leads-escalated-today');
+        const escSubEl = document.getElementById('leads-escalated-today-sub');
+        if (escEl) escEl.textContent = rows.length;
+        if (escSubEl) escSubEl.textContent = rows.length === 1 ? '1 lead escalated' : rows.length + ' leads escalated';
+      }
+    } catch(e) { console.error('Escalation fetch error:', e); }
+  }
 }
 
 // ── AUTO REFRESH ──
