@@ -1510,12 +1510,12 @@ img { -webkit-user-drag: none; }
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 010 20"/><path d="M2 12h20"/></svg>
       Lead Overview
     </div>
-    <div id="lead-chart-legend" style="display:flex;gap:16px;font-size:12px;color:var(--text2)"></div>
+<div id="lead-chart-legend" style="display:none"></div>
   </div>
-<div style="display:grid;grid-template-columns:220px 1fr;gap:48px;align-items:center;width:100%;padding:8px 16px">
+<div style="display:grid;grid-template-columns:220px 1fr;gap:32px;align-items:center;width:100%;padding:8px 16px;box-sizing:border-box;min-width:0"></div>
   <!-- PIE CHART -->
-  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0">
-    <div style="position:relative;width:210px;height:210px">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0;min-width:0">
+    <div style="position:relative;width:210px;height:210px;flex-shrink:0">
       <canvas id="leads-pie" width="210" height="210" style="filter:drop-shadow(0 4px 20px rgba(0,0,0,0.12))"></canvas>
       <div id="pie-center" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
         <div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--text);line-height:1" id="pie-total">0</div>
@@ -1525,8 +1525,7 @@ img { -webkit-user-drag: none; }
   </div>
 
   <!-- STAT CARDS GRID -->
-  <div id="pie-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;overflow:visible;padding:4px 2px"></div>
-
+<div id="pie-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;overflow:visible;padding:4px 2px;min-width:0;box-sizing:border-box"></div>
 </div>
 </div>
 <!-- FOLLOW-UP ALERTS -->
