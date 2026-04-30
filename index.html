@@ -116,8 +116,7 @@
 
   .logo-text span { color: var(--accent); }
 
-  nav { flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 2px; }
-
+nav { flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
   .nav-item {
     display: flex; align-items: center; gap: 10px;
     padding: 9px 12px;
@@ -142,31 +141,34 @@
     padding: 4px 12px 2px;
   }
 
-  .sidebar-footer {
-    padding: 16px 12px;
-    border-top: 1px solid var(--border);
-  }
+.sidebar-footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
 
-  .user-chip {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 10px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: background .18s;
-  }
+.user-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background .18s;
+}
+.user-chip:hover { background: var(--red-soft) !important; }
+.user-chip:hover .user-name { color: var(--red); }
+.user-chip:hover .user-role { color: var(--red); opacity: 0.7; }
 
   .user-chip:hover { background: var(--surface2); }
 
   .avatar {
-    width: 30px; height: 30px;
-    border-radius: 50%;
+  width: 26px; height: 26px;
+  border-radius: 50%;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
   }
 
-  .user-name { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.2; }
-  .user-role { font-size: 11px; color: var(--text3); }
+  .user-name { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.2; transition: color .18s; }
+.user-role { font-size: 10px; color: var(--text3); transition: color .18s; }
 
   /* ── MAIN ── */
 #main {
@@ -1182,6 +1184,10 @@ img { -webkit-user-drag: none; }
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       Dashboard
     </button>
+    <button class="nav-item" onclick="showPage('funnel',this)">
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg>
+  Funnel
+</button>
     <button class="nav-item" onclick="showPage('sales',this)">
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
   Sales
@@ -1472,6 +1478,14 @@ img { -webkit-user-drag: none; }
 </div>
 
     <!-- CONTACTS PAGE -->
+     <!-- FUNNEL PAGE -->
+<div class="page" id="page-funnel" style="width:100%">
+  <div style="margin-bottom:20px">
+    <div style="font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px">↭ Conversion Funnel</div>
+    <div style="font-size:13px;color:var(--text3)">How leads progress through each stage — drop-off at every step</div>
+  </div>
+  <div class="section" id="funnel-section"></div>
+</div>
      <!-- SALES PAGE -->
 <div class="page" id="page-sales">
   <div class="stats-row" style="margin-bottom:16px;grid-template-columns:repeat(4,1fr)">
@@ -2214,7 +2228,7 @@ function showPage(id, btn) {
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (btn) btn.classList.add('active');
-const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashboard:'Dashboard', contacts:'Contacts', settings:'Settings', action:'Action Required ⚡' };
+  const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashboard:'Dashboard', contacts:'Contacts', settings:'Settings', action:'Action Required ⚡', funnel:'Conversion Funnel' };
   document.getElementById('page-title').textContent = titles[id] || id;
   if (id === 'home') renderHome();
   if (id === 'dashboard') {
@@ -2231,6 +2245,7 @@ const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashbo
 if (id === 'leads') { renderLeads(); renderLeadsStats(); }
   if (id === 'suspended') renderSuspended();
   if (id === 'action') renderActionPage();
+  if (id === 'funnel') renderFunnelPage();
   if (id === 'contacts') renderContacts();
   if (id === 'sales') renderSales();
   if (id === 'settings') loadProfileUI();
@@ -4746,6 +4761,128 @@ function updateActionBadge(count) {
     btn.style.color = '';
     btn.style.background = '';
   }
+}
+function renderFunnelPage() {
+  const el = document.getElementById('funnel-section');
+  if (!el) return;
+
+  const leads = state.leads || [];
+  const total = leads.length;
+
+  const stages = [
+    { key: 'not_escalated', label: 'Not Escalated', color: '#94a3b8', icon: '📋' },
+    { key: 'outreach_wapp', label: 'Outreach (Wapp)', color: '#22c55e', icon: '💬' },
+    { key: 'outreach_call', label: 'Outreach (Call)', color: '#3b82f6', icon: '📞' },
+    { key: 'prospecting',   label: 'Prospecting',    color: '#f59e0b', icon: '🔍' },
+    { key: 'followup',      label: 'Follow-up',      color: '#06b6d4', icon: '📅' },
+    { key: 'payment',       label: 'Payment',        color: '#8b5cf6', icon: '💳' },
+    { key: 'converted',     label: 'Converted',      color: '#22c55e', icon: '✅' },
+  ];
+
+  const counts = stages.map(s => ({
+    ...s,
+    count: leads.filter(l => l.status === s.key).length
+  }));
+
+  const maxCount = Math.max(...counts.map(s => s.count), 1);
+  const topCount = counts[0].count || 1;
+
+  // Summary stats row
+  const converted = counts.find(s => s.key === 'converted')?.count || 0;
+  const convRate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0.0';
+  const active = leads.filter(l => l.status !== 'suspended' && l.status !== 'converted').length;
+
+  let html = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px">
+      <div style="padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Total Leads</div>
+        <div style="font-family:var(--font-head);font-size:28px;font-weight:800;color:var(--text)">${total}</div>
+      </div>
+      <div style="padding:16px;background:var(--green-soft);border:1px solid var(--green)33;border-radius:12px;text-align:center">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Converted</div>
+        <div style="font-family:var(--font-head);font-size:28px;font-weight:800;color:var(--green)">${converted} <span style="font-size:14px;font-weight:500">(${convRate}%)</span></div>
+      </div>
+      <div style="padding:16px;background:var(--accent-soft);border:1px solid var(--accent)33;border-radius:12px;text-align:center">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">In Pipeline</div>
+        <div style="font-family:var(--font-head);font-size:28px;font-weight:800;color:var(--accent)">${active}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">`;
+
+  counts.forEach((s, i) => {
+    const barPct = maxCount > 0 ? Math.max(4, Math.round((s.count / maxCount) * 100)) : 4;
+    const funnelWidth = Math.max(30, Math.round(100 - (i * (70 / counts.length))));
+    const prevCount = i > 0 ? counts[i - 1].count : null;
+    const dropoff = prevCount !== null && prevCount > 0
+      ? Math.round(((prevCount - s.count) / prevCount) * 100)
+      : null;
+    const dropoffColor = dropoff > 60 ? '#ef4444' : dropoff > 30 ? '#f59e0b' : '#22c55e';
+
+    html += `
+      <div style="display:flex;align-items:center;gap:16px">
+
+        <!-- Stage label -->
+        <div style="width:160px;flex-shrink:0;text-align:right">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${s.icon} ${s.label}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${s.count} leads</div>
+        </div>
+
+        <!-- Funnel bar -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:center">
+            <div style="
+              width:${funnelWidth}%;
+              background:${s.color}22;
+              border:1.5px solid ${s.color}55;
+              border-radius:8px;
+              overflow:hidden;
+              height:40px;
+              position:relative;
+              transition:all .3s ease;
+            ">
+              <div style="
+                height:100%;
+                width:${barPct}%;
+                background:linear-gradient(90deg,${s.color}99,${s.color});
+                border-radius:6px;
+                display:flex;
+                align-items:center;
+                padding-left:12px;
+                min-width:48px;
+              ">
+                <span style="font-family:var(--font-head);font-size:15px;font-weight:800;color:#fff;white-space:nowrap">${s.count}</span>
+              </div>
+              <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:${s.color};font-weight:600">
+                ${total > 0 ? Math.round(s.count / total * 100) : 0}%
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Drop-off badge -->
+        <div style="width:90px;flex-shrink:0;text-align:left">
+          ${dropoff !== null ? `
+            <span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:${dropoffColor}15;color:${dropoffColor};border:1px solid ${dropoffColor}33">
+              ${dropoff > 0 ? '▼ ' + dropoff + '% drop' : '▲ gain'}
+            </span>` : '<span style="font-size:11px;color:var(--text3)">Top of funnel</span>'}
+        </div>
+      </div>
+
+      ${i < counts.length - 1 ? `
+      <div style="display:flex;align-items:center;gap:16px;padding-left:176px">
+        <div style="color:var(--text3);font-size:18px;opacity:0.4">↓</div>
+      </div>` : ''}
+    `;
+  });
+
+  html += `</div>
+
+    <div style="margin-top:24px;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--text3)">
+      💡 <strong style="color:var(--text2)">Tip:</strong> Right-click any lead in the Leads page to quickly change its status and move it through the funnel.
+    </div>`;
+
+  el.innerHTML = html;
 }
 function startAutoRefresh() {
   // Refresh every 30 seconds
