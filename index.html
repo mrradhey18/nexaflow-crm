@@ -4300,8 +4300,11 @@ function runSearch(q) {
             ${l.city ? ' · ' + esc(l.city) : ''}
           </div>
         </div>
-        ${l.wapp ? `<a href="https://wa.me/${l.wapp.replace(/\D/g,'')}" target="_blank" onclick="event.stopPropagation()" class="icon-link wapp" style="flex-shrink:0">${wappSVG()}</a>` : ''}
-      </div>`).join('');
+<div style="display:flex;gap:4px;flex-shrink:0">
+  ${l.wapp ? `<a href="https://wa.me/${l.wapp.replace(/\D/g,'')}" target="_blank" onclick="event.stopPropagation()" class="icon-link wapp">${wappSVG()}</a>` : ''}
+  ${l.gbpUrl ? `<a href="${esc(l.gbpUrl)}" target="_blank" onclick="event.stopPropagation()" class="icon-link gbp">${googleSVG()}</a>` : ''}
+</div>
+        </div>`).join('');
   }
 
   if (matchedContacts.length) {
