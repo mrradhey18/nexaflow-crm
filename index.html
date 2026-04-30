@@ -6,8 +6,12 @@
 <title>Nexaflow CRM</title>
 <link rel="icon" href="#">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+<link rel="dns-prefetch" href="https://fonts.googleapis.com">
+<link rel="dns-prefetch" href="https://fonts.gstatic.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0d0f14;
@@ -31,7 +35,7 @@
     --radius: 12px;
     --radius-sm: 8px;
     --shadow: 0 4px 24px #00000060;
-    --font-head: 'Syne', sans-serif;
+   --font-head: 'Syne', sans-serif;
     --font-body: 'DM Sans', sans-serif;
   }
 
@@ -769,17 +773,6 @@
 
   #toast.show { transform: translateY(0); opacity: 1; }
 
-  /* ── DASHBOARD IFRAME ── */
-  .dash-frame {
-    width: 100%; height: calc(100vh - 140px);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-  }
-
-  .dash-url-bar { display: flex; gap: 8px; margin-bottom: 12px; }
-  .dash-url-bar input { flex: 1; }
-
   /* ── SCROLLBAR ── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -1075,8 +1068,8 @@ html { font-size: 16px; }
 
 /* Tablet */
 @media (min-width: 769px) and (max-width: 1024px) {
-  #sidebar { width: 220px; flex-shrink: 0; }
-  #main { margin-left: 180px; }
+  #sidebar { width: 200px; flex-shrink: 0; }
+  #main { margin-left: 200px; width: calc(100% - 200px); }
   .stats-row { grid-template-columns: repeat(3, 1fr); }
   #page-sales .stats-row { grid-template-columns: repeat(2, 1fr); }
   .contacts-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1110,6 +1103,26 @@ img { -webkit-user-drag: none; }
   #sidebar, #topbar, #quick-menu, #toast { display: none !important; }
   #main { margin-left: 0; }
   .section { break-inside: avoid; }
+}
+/* Pie stats grid responsive */
+@media (max-width: 900px) {
+  #pie-stats {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+@media (max-width: 600px) {
+  #pie-stats {
+    grid-template-columns: 1fr !important;
+  }
+  #page-home canvas#leads-pie {
+    width: 140px !important;
+    height: 140px !important;
+  }
+}
+/* Prevent card clip on hover */
+#pie-stats > div {
+  will-change: transform;
+  backface-visibility: hidden;
 }
 </style>
 </head>
@@ -1154,9 +1167,14 @@ img { -webkit-user-drag: none; }
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
       Leads
     </button>
-    <button class="nav-item" onclick="showPage('suspended',this)">
+ <button class="nav-item" onclick="showPage('suspended',this)">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
       Suspended
+    </button>
+    <button class="nav-item" id="action-nav-btn" onclick="showPage('action',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <span style="flex:1;text-align:left">Action</span>
+      <span id="action-nav-badge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;min-width:20px;text-align:center"></span>
     </button>
     <div class="nav-sep"></div>
     <span class="nav-label">Tools</span>
@@ -1255,7 +1273,7 @@ img { -webkit-user-drag: none; }
         </div>
       </div>
 
-      <div class="section" style="margin-bottom:16px">
+    <div class="section" style="margin-bottom:16px;overflow:visible">
   <div class="section-head">
     <div class="section-title">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 010 20"/><path d="M2 12h20"/></svg>
@@ -1263,16 +1281,22 @@ img { -webkit-user-drag: none; }
     </div>
     <div id="lead-chart-legend" style="display:flex;gap:16px;font-size:12px;color:var(--text2)"></div>
   </div>
-<div style="display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;overflow:hidden;min-height:0">
-    <div style="position:relative;width:180px;height:180px;flex-shrink:0">
-      <canvas id="leads-pie" width="180" height="180" style="filter:drop-shadow(0 4px 16px #00000040)"></canvas>
+<div style="display:grid;grid-template-columns:220px 1fr;gap:48px;align-items:center;width:100%;padding:8px 16px">
+  <!-- PIE CHART -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0">
+    <div style="position:relative;width:210px;height:210px">
+      <canvas id="leads-pie" width="210" height="210" style="filter:drop-shadow(0 4px 20px rgba(0,0,0,0.12))"></canvas>
       <div id="pie-center" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
-        <div style="font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--text)" id="pie-total">0</div>
-        <div style="font-size:11px;color:var(--text3)">Total Leads</div>
+        <div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--text);line-height:1" id="pie-total">0</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Total Leads</div>
       </div>
     </div>
-  <div id="pie-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:460px;width:100%"></div>
   </div>
+
+  <!-- STAT CARDS GRID -->
+  <div id="pie-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;overflow:visible;padding:4px 2px"></div>
+
+</div>
 </div>
 <!-- FOLLOW-UP ALERTS -->
 <div class="section" id="followup-home-section" style="display:none;margin-bottom:16px;border-color:var(--amber)"></div>
@@ -1355,6 +1379,65 @@ img { -webkit-user-drag: none; }
     </div>
 
     <!-- SUSPENDED PAGE -->
+     <!-- ACTION PAGE -->
+    <div class="page" id="page-action" style="width:100%">
+      <div style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--text)">Action Required ⚡</div>
+          <button class="btn btn-ghost" onclick="refreshActionPage()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            Refresh
+          </button>
+        </div>
+        <div style="font-size:13px;color:var(--text3)">Leads stuck in the same status for 5 or more days</div>
+      </div>
+
+      <!-- STATS ROW -->
+      <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+        <div class="stat-card" style="border-color:rgba(239,68,68,0.3)">
+          <div class="stat-label">Critical (10+ days)</div>
+          <div class="stat-value" id="action-critical" style="color:#ef4444">0</div>
+          <div class="stat-sub">Needs immediate attention</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(245,158,11,0.3)">
+          <div class="stat-label">Warning (5–9 days)</div>
+          <div class="stat-value" id="action-warning" style="color:#f59e0b">0</div>
+          <div class="stat-sub">Follow up soon</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(79,142,247,0.3)">
+          <div class="stat-label">Total Stale Leads</div>
+          <div class="stat-value" id="action-total" style="color:var(--accent)">0</div>
+          <div class="stat-sub">Across all statuses</div>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="section" style="width:100%">
+        <div class="section-head">
+          <div class="section-title">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Stale Leads
+          </div>
+          <div style="font-size:12px;color:var(--text3)" id="action-last-updated"></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Lead</th>
+                <th>Status</th>
+                <th>Days Stuck</th>
+                <th>Phone</th>
+                <th>City</th>
+                <th>Links</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="action-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 <div class="page" id="page-suspended" style="width:100%">
       <div class="section" style="width:100%">
         <div class="section-head">
@@ -2030,8 +2113,6 @@ updateDbStatus(true);
   startAutoRefresh();
 
 fetchAllFromSupabase().then(() => {
-    console.log('✅ Fetch complete. state.sales:', state.sales);
-    console.log('✅ state.sales length:', (state.sales || []).length);
 renderHome();
 renderLeads();
 renderLeadsStats();
@@ -2133,7 +2214,7 @@ function showPage(id, btn) {
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashboard:'Dashboard', contacts:'Contacts', settings:'Settings' };
+const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashboard:'Dashboard', contacts:'Contacts', settings:'Settings', action:'Action Required ⚡' };
   document.getElementById('page-title').textContent = titles[id] || id;
   if (id === 'home') renderHome();
   if (id === 'dashboard') {
@@ -2149,6 +2230,7 @@ function showPage(id, btn) {
   }
 if (id === 'leads') { renderLeads(); renderLeadsStats(); }
   if (id === 'suspended') renderSuspended();
+  if (id === 'action') renderActionPage();
   if (id === 'contacts') renderContacts();
   if (id === 'sales') renderSales();
   if (id === 'settings') loadProfileUI();
@@ -2194,10 +2276,11 @@ const headers = {
         status: r.status,
         saleAmount: r.sale_amount,
         convertedAt: r.converted_at,
-       followupDate: r.followup_date || '',
+      followupDate: r.followup_date || '',
         followupNote: r.followup_note || '',
         followupTime: r.followup_time || '',
         createdAt: r.created_at,
+        statusChangedAt: r.status_changed_at || r.created_at,
         userEmail: r.user_email
       }));
     }
@@ -2206,7 +2289,6 @@ const headers = {
     const salesRes = await fetch(`${supaUrl}/rest/v1/sales?order=created_at.desc&limit=1000`, { headers });
     if (salesRes.ok) {
       const salesRows = await salesRes.json();
-      console.log('Sales fetched from Supabase:', salesRows);
       if (Array.isArray(salesRows) && salesRows.length > 0) {
         state.sales = salesRows.map(r => ({
           id: r.id,
@@ -2294,7 +2376,8 @@ if (state.user) {
       }
     }
 
-    save();
+     save();
+    updateActionBadge(state.leads.filter(l => l.status !== 'suspended' && l.status !== 'converted' && getAgingDays(l) >= 5).length);
     updateDbStatus(true);
   } catch(e) {
     console.error('Supabase fetch error:', e);
@@ -2330,8 +2413,7 @@ function renderHome() {
   const activeLeads = state.leads.filter(l => l.status !== 'suspended');
 const now = new Date();
 const allSales = Array.isArray(state.sales) ? state.sales : [];
-console.log('renderHome called, allSales:', allSales.length, allSales);
-const total = allSales.reduce((s, x) => s + (x.amount || 0), 0);
+
 const monthSales = allSales.filter(x => {
   const d = new Date(x.date);
   return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
@@ -2435,8 +2517,10 @@ function renderLeads() {
   const webIcons = { yes: '✅', no: '❌', not_working: '⚠️' };
 
   tb.innerHTML = paginated.map(l => `
-    <tr oncontextmenu="openStatusMenu(event,'${l.id}')" style="cursor:context-menu">
-      <td class="td-name">
+<tr oncontextmenu="openStatusMenu(event,'${l.id}')" style="cursor:context-menu;${getAgingDays(l) >= 5 ? 'background:rgba(245,158,11,0.06);outline:1px solid rgba(245,158,11,0.25);' : ''}">
+<td class="td-name">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        ${getAgingDays(l) >= 5 ? `<span title="${getAgingDays(l)} days in this status" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(245,158,11,0.12);color:#f59e0b;white-space:nowrap;flex-shrink:0">⏳ ${getAgingDays(l)}d</span>` : ''}
         ${l.note ? `<span style="position:relative;display:inline-flex;align-items:center;gap:6px">
           <span class="note-icon-wrap" style="position:relative;display:inline-flex">
             <svg fill="none" stroke="var(--accent)" viewBox="0 0 24 24" style="width:13px;height:13px;flex-shrink:0;cursor:pointer" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -2444,6 +2528,7 @@ function renderLeads() {
           </span>
           ${esc(l.name)}
         </span>` : esc(l.name)}
+        </div>
       </td>
     <td>
         <span class="status-pill ${statusClass(l.status)}">${statusLabel(l.status)}</span>
@@ -2693,6 +2778,8 @@ async function saveLead(createAnother = false) {
     if (!confirm(`⚠️ "${dupLead.name}" already has this phone number.\n\nSave anyway?`)) return;
   }
   const status = document.querySelector('input[name="lead-status"]:checked')?.value || 'not_escalated';
+  const existingLead = state.leads.find(l => l.id === editId);
+const statusActuallyChanged = !existingLead || existingLead.status !== status;
 
   const lead = {
     id: editId || uid(),
@@ -2709,6 +2796,7 @@ async function saveLead(createAnother = false) {
     status,
     sale_amount: status === 'converted' ? parseFloat(document.getElementById('lead-sale').value) || 0 : 0,
     converted_at: status === 'converted' ? new Date().toISOString() : null,
+    status_changed_at: statusActuallyChanged ? new Date().toISOString() : (existingLead?.statusChangedAt || new Date().toISOString()),
     created_at: editId ? (state.leads.find(l=>l.id===editId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
     followup_date: status === 'followup' ? document.getElementById('lead-followup-date').value : null,
     followup_note: null,
@@ -3418,8 +3506,10 @@ function renderSales() {
   document.getElementById('sales-q1-sub').textContent = q1.count + ' deal' + (q1.count !== 1 ? 's' : '');
   document.getElementById('sales-q2').textContent = '₹' + fmtNum(q2.total);
   document.getElementById('sales-q2-sub').textContent = q2.count + ' deal' + (q2.count !== 1 ? 's' : '');
-  document.getElementById('sales-q3').textContent = '₹' + fmtNum(q3.total);
+document.getElementById('sales-q3').textContent = '₹' + fmtNum(q3.total);
   document.getElementById('sales-q3-sub').textContent = q3.count + ' deal' + (q3.count !== 1 ? 's' : '');
+  document.getElementById('sales-q4').textContent = '₹' + fmtNum(q4.total);
+  document.getElementById('sales-q4-sub').textContent = q4.count + ' deal' + (q4.count !== 1 ? 's' : '');
 const todaySales = sales.filter(x => x.date === todayISO());
   const todayTotal = todaySales.reduce((s, x) => s + (x.amount || 0), 0);
   const todayAmt = document.getElementById('sales-today-amt');
@@ -3472,14 +3562,14 @@ function renderLeadsPie() {
   document.getElementById('pie-total').textContent = total;
 
 const stats = [
-    { label: 'Not Escalated',   count: leads.filter(l => l.status === 'not_escalated').length,   color: '#94a3b8', bg: '#94a3b814' },
-    { label: 'Outreach (Wapp)', count: leads.filter(l => l.status === 'outreach_wapp').length,    color: '#22c55e', bg: '#22c55e14' },
-    { label: 'Outreach (Call)', count: leads.filter(l => l.status === 'outreach_call').length,    color: '#3b82f6', bg: '#3b82f614' },
-    { label: 'Prospecting',     count: leads.filter(l => l.status === 'prospecting').length,      color: '#f59e0b', bg: '#f59e0b14' },
-    { label: 'Payment',         count: leads.filter(l => l.status === 'payment').length,          color: '#8b5cf6', bg: '#8b5cf614' },
-    { label: 'Follow-up',       count: leads.filter(l => l.status === 'followup').length,         color: '#06b6d4', bg: '#06b6d414' },
-    { label: 'Converted',       count: leads.filter(l => l.status === 'converted').length,        color: '#4ade80', bg: '#4ade8014' },
-    { label: 'Suspended',       count: leads.filter(l => l.status === 'suspended').length,        color: '#ef4444', bg: '#ef444414' },
+    { key: 'not_escalated', label: 'Not Escalated',   count: leads.filter(l => l.status === 'not_escalated').length,   color: '#94a3b8', bg: '#94a3b814' },
+    { key: 'outreach_wapp', label: 'Outreach (Wapp)', count: leads.filter(l => l.status === 'outreach_wapp').length,    color: '#22c55e', bg: '#22c55e14' },
+    { key: 'outreach_call', label: 'Outreach (Call)', count: leads.filter(l => l.status === 'outreach_call').length,    color: '#3b82f6', bg: '#3b82f614' },
+    { key: 'prospecting',   label: 'Prospecting',     count: leads.filter(l => l.status === 'prospecting').length,      color: '#f59e0b', bg: '#f59e0b14' },
+    { key: 'payment',       label: 'Payment',         count: leads.filter(l => l.status === 'payment').length,          color: '#8b5cf6', bg: '#8b5cf614' },
+    { key: 'followup',      label: 'Follow-up',       count: leads.filter(l => l.status === 'followup').length,         color: '#06b6d4', bg: '#06b6d414' },
+    { key: 'converted',     label: 'Converted',       count: leads.filter(l => l.status === 'converted').length,        color: '#4ade80', bg: '#4ade8014' },
+    { key: 'suspended',     label: 'Suspended',       count: leads.filter(l => l.status === 'suspended').length,        color: '#ef4444', bg: '#ef444414' },
   ];
 
   // Legend
@@ -3491,12 +3581,19 @@ const stats = [
 
   // Side stats
 document.getElementById('pie-stats').innerHTML = stats.map(s => `
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${s.bg};border-radius:10px;border:1px solid ${s.color}33;box-shadow:0 2px 8px ${s.color}18">
-      <div style="width:9px;height:9px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
-      <div style="min-width:0">
-        <div style="font-family:var(--font-head);font-size:16px;font-weight:800;color:var(--text);line-height:1.2">${s.count} <span style="font-size:11px;font-weight:500;color:${s.color}">${total ? Math.round(s.count/total*100) : 0}%</span></div>
-        <div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.label}</div>
+    <div onclick="goToLeadsFilter('${s.key}')"
+      style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:${s.bg};border-radius:10px;border:1px solid ${s.color}33;cursor:pointer;transition:all .18s ease;position:relative;overflow:visible;box-sizing:border-box"
+      onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='${s.color}77';this.style.boxShadow='0 6px 20px ${s.color}28'"
+      onmouseout="this.style.transform='translateY(0)';this.style.borderColor='${s.color}33';this.style.boxShadow='none'">
+      <div style="width:9px;height:9px;border-radius:50%;background:${s.color};flex-shrink:0;margin-top:1px"></div>
+      <div style="min-width:0;flex:1">
+        <div style="font-family:var(--font-head);font-size:15px;font-weight:800;color:var(--text);line-height:1.2;white-space:nowrap">
+          ${s.count}
+          <span style="font-size:11px;font-weight:500;color:${s.color};margin-left:3px">${total ? Math.round(s.count/total*100) : 0}%</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.label}</div>
       </div>
+      <div style="flex-shrink:0;color:${s.color};font-size:13px;opacity:0.5;margin-left:4px">→</div>
     </div>`).join('');
 
   const canvas = document.getElementById('leads-pie');
@@ -3542,6 +3639,17 @@ document.getElementById('pie-stats').innerHTML = stats.map(s => `
   });
 }
 // ── HELPERS ──
+function goToLeadsFilter(statusKey) {
+  leadsFilter = statusKey;
+  leadsPage = 1;
+  const btn = document.querySelector(`.nav-item[onclick*="'leads'"]`);
+  showPage('leads', btn);
+}
+function getAgingDays(lead) {
+  const ref = lead.statusChangedAt || lead.createdAt;
+  if (!ref) return 0;
+  return Math.floor((Date.now() - new Date(ref)) / 86400000);
+}
 function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 function todayISO() { return new Date().toISOString().slice(0, 10); }
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -3873,6 +3981,7 @@ async function applyQuickStatus(newStatus) {
 
   const oldStatus = lead.status;
   lead.status = newStatus;
+  lead.statusChangedAt = new Date().toISOString();
   // Track escalation if moving FROM not_escalated
   if (oldStatus === 'not_escalated' && newStatus !== 'not_escalated') {
     const { supaUrl, supaKey } = state.settings;
@@ -3948,12 +4057,13 @@ closeStatusMenu();
           'Authorization': 'Bearer ' + supaKey,
           'Prefer': 'return=minimal'
         },
-      body: JSON.stringify({
+     body: JSON.stringify({
           status: newStatus,
           sale_amount: lead.saleAmount || 0,
           converted_at: lead.convertedAt || null,
           followup_date: lead.followupDate || null,
-          followup_note: lead.followupNote || null
+          followup_note: lead.followupNote || null,
+          status_changed_at: lead.statusChangedAt
         })
       });
     }
@@ -4529,6 +4639,114 @@ async function renderLeadsStats() {
 }
 
 // ── AUTO REFRESH ──
+function renderActionPage() {
+  const staleLeads = state.leads
+    .filter(l => l.status !== 'suspended' && l.status !== 'converted' && getAgingDays(l) >= 5)
+    .sort((a, b) => getAgingDays(b) - getAgingDays(a)); // worst first
+
+  // Stats
+  const critical = staleLeads.filter(l => getAgingDays(l) >= 10);
+  const warning  = staleLeads.filter(l => getAgingDays(l) >= 5 && getAgingDays(l) < 10);
+
+  document.getElementById('action-critical').textContent = critical.length;
+  document.getElementById('action-warning').textContent  = warning.length;
+  document.getElementById('action-total').textContent    = staleLeads.length;
+  document.getElementById('action-last-updated').textContent =
+    'Updated ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+
+  // Update sidebar badge
+  updateActionBadge(staleLeads.length);
+
+  const tb = document.getElementById('action-tbody');
+  if (!staleLeads.length) {
+    tb.innerHTML = `
+      <tr><td colspan="7">
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+            <polyline points="22,4 12,14.01 9,11.01"/>
+          </svg>
+          <p style="color:var(--green);font-weight:600">All leads are active! No stale leads.</p>
+        </div>
+      </td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = staleLeads.map(l => {
+    const days = getAgingDays(l);
+    const isCritical = days >= 10;
+    const rowBg = isCritical
+      ? 'background:rgba(239,68,68,0.05);'
+      : 'background:rgba(245,158,11,0.04);';
+    const badgeColor = isCritical
+      ? 'background:rgba(239,68,68,0.15);color:#ef4444;'
+      : 'background:rgba(245,158,11,0.15);color:#f59e0b;';
+    const badgeIcon = isCritical ? '🔴' : '🟡';
+
+    return `
+      <tr style="${rowBg}cursor:context-menu" oncontextmenu="openStatusMenu(event,'${l.id}')">
+        <td class="td-name">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:6px;height:36px;border-radius:3px;flex-shrink:0;background:${isCritical ? '#ef4444' : '#f59e0b'}"></div>
+            <div>
+              <div style="font-weight:600;color:var(--text)">${esc(l.name)}</div>
+              ${l.note ? `<div style="font-size:11px;color:var(--text3);margin-top:2px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.note)}</div>` : ''}
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="status-pill ${statusClass(l.status)}">${statusLabel(l.status)}</span>
+        </td>
+        <td>
+          <span style="font-family:var(--font-head);font-size:15px;font-weight:800;padding:4px 10px;border-radius:8px;${badgeColor}">
+            ${badgeIcon} ${days}d
+          </span>
+        </td>
+        <td>${l.phone ? `<a href="tel:${esc(l.phone)}" style="color:var(--text2);text-decoration:none">${esc(l.phone)}</a>` : '—'}</td>
+        <td>${l.city ? esc(l.city) : '—'}</td>
+        <td>
+          <div class="row-actions">
+            ${l.wapp ? `<a href="https://wa.me/${l.wapp.replace(/\D/g,'')}" target="_blank" class="icon-link wapp">${wappSVG()}</a>` : ''}
+            ${l.gbpUrl ? `<a href="${esc(l.gbpUrl)}" target="_blank" class="icon-link gbp">${googleSVG()}</a>` : ''}
+          </div>
+        </td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn" onclick="editLead('${l.id}')" title="Edit lead">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            ${l.wapp ? `
+            <a href="https://wa.me/${l.wapp.replace(/\D/g,'')}" target="_blank"
+              class="btn btn-success" style="padding:4px 10px;font-size:11.5px;text-decoration:none">
+              WhatsApp
+            </a>` : ''}
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function refreshActionPage() {
+  renderActionPage();
+  toast('Action page refreshed');
+}
+
+function updateActionBadge(count) {
+  const badge = document.getElementById('action-nav-badge');
+  const btn   = document.getElementById('action-nav-btn');
+  if (!badge || !btn) return;
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = '';
+    // Turn the nav item red when there are stale leads
+    btn.style.color = '#ef4444';
+    btn.style.background = 'rgba(239,68,68,0.08)';
+  } else {
+    badge.style.display = 'none';
+    btn.style.color = '';
+    btn.style.background = '';
+  }
+}
 function startAutoRefresh() {
   // Refresh every 30 seconds
   setInterval(async () => {
