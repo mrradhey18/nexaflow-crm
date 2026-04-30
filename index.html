@@ -2923,8 +2923,40 @@ async function deleteTask(id) {
 let calState = { year: 0, month: 0, selected: '' };
 
 function openCallModal() {
-  document.getElementById('call-name').value = '';
-  document.getElementById('call-phone').value = '';
+document.getElementById('call-name').value = '';
+document.getElementById('call-phone').value = '';
+
+// Add autocomplete dropdown
+const nameInput = document.getElementById('call-name');
+const existingDropdown = document.getElementById('call-name-dropdown');
+if (existingDropdown) existingDropdown.remove();
+
+const dropdown = document.createElement('div');
+dropdown.id = 'call-name-dropdown';
+dropdown.style.cssText = 'display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 8px 24px #00000080;z-index:9999;max-height:200px;overflow-y:auto;margin-top:4px';
+
+const nameWrap = document.createElement('div');
+nameWrap.style.cssText = 'position:relative';
+nameInput.parentNode.insertBefore(nameWrap, nameInput);
+nameWrap.appendChild(nameInput);
+nameWrap.appendChild(dropdown);
+
+nameInput.addEventListener('input', function() {
+  const q = this.value.toLowerCase().trim();
+  if (!q) { dropdown.style.display = 'none'; return; }
+  const matches = state.leads.filter(l => l.status !== 'suspended' && (l.name?.toLowerCase().includes(q) || l.phone?.includes(q))).slice(0, 6);
+  if (!matches.length) { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matches.map(l => `
+    <div onclick="fillCallFromLead('${l.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(l.name)}</div>
+      <div style="font-size:11.5px;color:var(--text3)">${l.phone || '—'}${l.city ? ' · ' + l.city : ''}</div>
+    </div>`).join('');
+  dropdown.style.display = '';
+});
+
+document.addEventListener('click', function closeDD(e) {
+  if (!nameWrap.contains(e.target)) { dropdown.style.display = 'none'; document.removeEventListener('click', closeDD); }
+});
   document.getElementById('call-time').value = '';
   document.getElementById('call-note').value = '';
   const now = new Date();
@@ -2934,6 +2966,15 @@ function openCallModal() {
   document.getElementById('call-date').value = calState.selected;
   renderCal();
   openModal('modal-call');
+}
+
+function fillCallFromLead(id) {
+  const l = state.leads.find(x => x.id === id);
+  if (!l) return;
+  document.getElementById('call-name').value = l.name || '';
+  document.getElementById('call-phone').value = l.phone || l.wapp || '';
+  const dropdown = document.getElementById('call-name-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
 }
 
 function renderCal() {
