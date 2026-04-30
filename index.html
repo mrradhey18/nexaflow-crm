@@ -165,12 +165,14 @@
   .user-role { font-size: 11px; color: var(--text3); }
 
   /* ── MAIN ── */
-  #main {
+#main {
     margin-left: 220px;
     flex: 1;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    width: calc(100% - 220px);
   }
 
   /* ── TOPBAR ── */
@@ -217,7 +219,7 @@
   .btn-success:hover { background: #22c55e22; }
 
   /* ── CONTENT ── */
-  #content { flex: 1; padding: 24px; }
+#content { flex: 1; padding: 24px; width: 100%; box-sizing: border-box; overflow-x: hidden; }
 
   /* ── PAGES ── */
   .page { display: none; }
@@ -258,12 +260,14 @@
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 
   /* ── SECTION ── */
-  .section {
+.section {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 20px;
     margin-bottom: 16px;
+    width: 100%;
+    box-sizing: border-box;
   }
 #page-home .section { overflow: hidden; }
 
@@ -408,7 +412,7 @@
   .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
   .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-  table { width: 100%; border-collapse: collapse; }
+ table { width: 100%; border-collapse: collapse; table-layout: auto; }
 
   th {
     font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
@@ -645,7 +649,7 @@
   .cal-day.other-month { color: var(--text3); }
 
   /* ── CONTACTS ── */
-  .contacts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .contacts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; width: 100%; }
 
   .contact-card {
     background: var(--surface2);
@@ -1071,7 +1075,7 @@ html { font-size: 16px; }
 
 /* Tablet */
 @media (min-width: 769px) and (max-width: 1024px) {
-  #sidebar { width: 180px; }
+  #sidebar { width: 220px; flex-shrink: 0; }
   #main { margin-left: 180px; }
   .stats-row { grid-template-columns: repeat(3, 1fr); }
   #page-sales .stats-row { grid-template-columns: repeat(2, 1fr); }
@@ -1080,7 +1084,7 @@ html { font-size: 16px; }
 
 /* Large screens */
 @media (min-width: 1400px) {
-  #content { max-width: 1400px; margin: 0 auto; }
+  #content { max-width: 100%; margin: 0; }
 }
 
 /* Smooth page transitions */
@@ -1351,8 +1355,8 @@ img { -webkit-user-drag: none; }
     </div>
 
     <!-- SUSPENDED PAGE -->
-    <div class="page" id="page-suspended">
-      <div class="section">
+<div class="page" id="page-suspended" style="width:100%">
+      <div class="section" style="width:100%">
         <div class="section-head">
           <div class="section-title">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -1371,8 +1375,8 @@ img { -webkit-user-drag: none; }
     </div>
 
     <!-- DASHBOARD PAGE -->
-<div class="page" id="page-dashboard" style="padding:0;margin:-24px">
-  <div style="position:fixed;inset:0;z-index:9990;background:var(--bg);display:flex;flex-direction:column;">
+<div class="page" id="page-dashboard" style="padding:0;margin:-24px;position:relative;">
+  <div id="dashboard-inner" style="display:none;position:fixed;inset:0;z-index:9990;background:var(--bg);flex-direction:column;">
     <div style="height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0">
       <button onclick="goBackFromDashboard()" style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 14px;color:var(--text);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><polyline points="15,18 9,12 15,6"/></svg>
@@ -1380,7 +1384,7 @@ img { -webkit-user-drag: none; }
       </button>
       <span style="font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--text2)">Dashboard</span>
     </div>
-    <iframe id="dash-frame" src="https://dashboard.nexaflow.bar/" style="flex:1;width:100%;border:none;display:block;"></iframe>
+    <iframe id="dash-frame" src="" style="flex:1;width:100%;border:none;display:block;"></iframe>
   </div>
 </div>
 
@@ -1487,8 +1491,8 @@ img { -webkit-user-drag: none; }
     </div>
   </div>
 </div>
-    <div class="page" id="page-contacts">
-      <div class="section">
+<div class="page" id="page-contacts" style="width:100%">
+      <div class="section" style="width:100%">
         <div class="section-head">
           <div class="section-title">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
@@ -1506,9 +1510,6 @@ img { -webkit-user-drag: none; }
     <!-- SETTINGS PAGE -->
     <div class="page" id="page-settings">
       <div style="max-width:560px">
-        <div class="settings-group">
-        </div>
-
 <div class="settings-group">
   <div class="settings-group-title">Profile</div>
 
@@ -1943,7 +1944,7 @@ let state = {
   calls: [],
   contacts: [],
   sales: [],
-  settings: { dashUrl: '', supaUrl: 'https://fkawawrnhkmbztfnnils.supabase.co', supaKey: '', logo: '' }
+  settings: { supaUrl: 'https://fkawawrnhkmbztfnnils.supabase.co', supaKey: '', logo: '' }
 };
 
 // ── PERSIST ──
@@ -2135,6 +2136,17 @@ function showPage(id, btn) {
   const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashboard:'Dashboard', contacts:'Contacts', settings:'Settings' };
   document.getElementById('page-title').textContent = titles[id] || id;
   if (id === 'home') renderHome();
+  if (id === 'dashboard') {
+    const inner = document.getElementById('dashboard-inner');
+    inner.style.display = 'flex';
+    const frame = document.getElementById('dash-frame');
+    if (!frame.src || frame.src === window.location.href) {
+      frame.src = 'https://dashboard.nexaflow.bar/';
+    }
+  } else {
+    const inner = document.getElementById('dashboard-inner');
+    if (inner) inner.style.display = 'none';
+  }
 if (id === 'leads') { renderLeads(); renderLeadsStats(); }
   if (id === 'suspended') renderSuspended();
   if (id === 'contacts') renderContacts();
@@ -2147,10 +2159,7 @@ function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebar-overlay').classList.toggle('show');
 }
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebar-overlay').classList.remove('show');
-}
+
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
 }
@@ -2185,7 +2194,9 @@ const headers = {
         status: r.status,
         saleAmount: r.sale_amount,
         convertedAt: r.converted_at,
-        followupDate: r.followup_date,
+       followupDate: r.followup_date || '',
+        followupNote: r.followup_note || '',
+        followupTime: r.followup_time || '',
         createdAt: r.created_at,
         userEmail: r.user_email
       }));
@@ -2434,7 +2445,14 @@ function renderLeads() {
           ${esc(l.name)}
         </span>` : esc(l.name)}
       </td>
-      <td><span class="status-pill ${statusClass(l.status)}">${statusLabel(l.status)}</span></td>
+    <td>
+        <span class="status-pill ${statusClass(l.status)}">${statusLabel(l.status)}</span>
+        ${l.status === 'followup' && l.followupNote ? `
+          <span style="position:relative;display:inline-flex;align-items:center;margin-left:5px;vertical-align:middle" class="note-icon-wrap">
+            <svg fill="none" stroke="var(--accent)" viewBox="0 0 24 24" style="width:13px;height:13px;cursor:pointer;flex-shrink:0" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span style="display:none;position:absolute;bottom:calc(100% + 6px);left:0;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text2);white-space:pre-wrap;max-width:220px;min-width:120px;box-shadow:var(--shadow);z-index:999;line-height:1.5" class="note-tooltip">${esc(l.followupNote)}</span>
+          </span>` : ''}
+      </td>
       <td>${l.phone ? `<a href="tel:${esc(l.phone)}" style="color:var(--text2);text-decoration:none">${esc(l.phone)}</a>` : '—'}</td>
       <td>${l.city ? esc(l.city) : '—'}</td>
       <td>${webIcons[l.website] || '—'}</td>
@@ -2693,6 +2711,8 @@ async function saveLead(createAnother = false) {
     converted_at: status === 'converted' ? new Date().toISOString() : null,
     created_at: editId ? (state.leads.find(l=>l.id===editId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
     followup_date: status === 'followup' ? document.getElementById('lead-followup-date').value : null,
+    followup_note: null,
+    followup_time: null,
     user_email: state.user?.email || ''
   };
 
@@ -2733,7 +2753,9 @@ async function saveLead(createAnother = false) {
     saleAmount: lead.sale_amount,
     convertedAt: lead.converted_at,
     createdAt: lead.created_at,
-   followupDate: lead.followup_date,
+   followupDate: lead.followup_date || '',
+    followupNote: lead.followup_note || '',
+    followupTime: lead.followup_time || '',
     userEmail: lead.user_email
   };
   if (editId) {
@@ -3234,14 +3256,10 @@ async function deleteContact(id) {
 // ── DASHBOARD ──
 
 function goBackFromDashboard() {
+  document.getElementById('dashboard-inner').style.display = 'none';
+  document.getElementById('dash-frame').src = '';
   const btn = document.querySelector(`.nav-item[onclick*="'home'"]`);
   showPage('home', btn);
-}
-function loadDash() {
-  const url = document.getElementById('dash-url').value.trim();
-   { toast('https://dashboard.nexaflow.bar/'); return; }
-  document.getElementById('dash-frame').src = url;
-  state.settings.dashUrl = url; save();
 }
 
 // ── SETTINGS ──
@@ -3261,26 +3279,7 @@ function applyLogo(init) {
   if (!init) toast('Logo applied');
 }
 
-function connectSupabase() {
-  const url = document.getElementById('supa-url').value.trim();
-  const key = document.getElementById('supa-key').value.trim();
-  if (!url || !key) { toast('Enter both URL and key'); return; }
-  state.settings.supaUrl = url;
-  state.settings.supaKey = key;
-  save();
-  // Attempt test ping
-  fetch(`${url}/rest/v1/`, { headers: { apikey: key, Authorization: 'Bearer ' + key } })
-    .then(r => {
-      const ok = r.ok || r.status === 404; // 404 means connected, table just not found
-      updateDbStatus(ok);
-      document.getElementById('supa-status').textContent = ok ? '✅ Connected' : '❌ Failed';
-      toast(ok ? 'Supabase connected!' : 'Connection failed');
-    })
-    .catch(() => {
-      document.getElementById('supa-status').textContent = '❌ Error';
-      updateDbStatus(false);
-    });
-}
+
 
 function updateDbStatus(connected) {
   document.getElementById('db-dot').className = 'db-dot' + (connected ? ' connected' : '');
@@ -3651,7 +3650,8 @@ function renderFollowupPopup() {
           <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(l.name)}</div>
           <span style="font-size:11px;font-weight:600">${label}</span>
         </div>
-        <div style="font-size:12px;color:var(--text3);margin-bottom:8px">📅 ${dateDisplay}${l.city ? ' · 📍 ' + esc(l.city) : ''}</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px">📅 ${dateDisplay}${l.followupTime ? ' · ⏰ ' + l.followupTime : ''}${l.city ? ' · 📍 ' + esc(l.city) : ''}</div>
+        ${l.followupNote ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px;padding:6px 8px;background:var(--surface3);border-radius:6px">📝 ${esc(l.followupNote)}</div>` : ''}
         <div style="display:flex;gap:6px">
           ${l.wapp ? `<a href="https://wa.me/${l.wapp.replace(/\D/g,'')}" target="_blank" class="btn btn-success" style="padding:4px 10px;font-size:11.5px">WhatsApp</a>` : ''}
           ${l.phone ? `<a href="tel:${esc(l.phone)}" class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">Call</a>` : ''}
@@ -3690,7 +3690,8 @@ function renderFollowupHomeSection() {
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:8px;background:${isOverdue ? 'var(--red-soft)' : 'var(--amber-soft)'};border:1px solid ${isOverdue ? 'var(--red)' : 'var(--amber)'};margin-bottom:8px">
           <div>
             <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(l.name)}</div>
-            <div style="font-size:11.5px;color:var(--text3)">${isOverdue ? '🔴 Overdue' : '🟡 Today'} · ${dateDisplay}</div>
+           <div style="font-size:11.5px;color:var(--text3)">${isOverdue ? '🔴 Overdue' : '🟡 Today'} · ${dateDisplay}${l.followupTime ? ' · ⏰ ' + l.followupTime : ''}</div>
+            ${l.followupNote ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;padding:4px 6px;background:var(--surface3);border-radius:5px">📝 ${esc(l.followupNote)}</div>` : ''}
           </div>
           <div style="display:flex;gap:6px">
             ${l.wapp ? `<a href="https://wa.me/${l.wapp.replace(/\D/g,'')}" target="_blank" class="icon-link wapp">${wappSVG()}</a>` : ''}
@@ -3925,12 +3926,11 @@ async function applyQuickStatus(newStatus) {
     lead.convertedAt = new Date().toISOString();
   }
 
-  // If followup, ask for date
-  if (newStatus === 'followup') {
-    const date = prompt('📅 Enter follow-up date (YYYY-MM-DD) or leave blank:');
-    if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      lead.followupDate = date;
-    }
+// If followup, ask for date + note
+if (newStatus === 'followup') {
+    closeStatusMenu();
+    openFollowupQuick(lead.id, lead.status);
+    return;
   }
 
 closeStatusMenu();
@@ -3948,11 +3948,12 @@ closeStatusMenu();
           'Authorization': 'Bearer ' + supaKey,
           'Prefer': 'return=minimal'
         },
-        body: JSON.stringify({
+      body: JSON.stringify({
           status: newStatus,
           sale_amount: lead.saleAmount || 0,
           converted_at: lead.convertedAt || null,
-          followup_date: lead.followupDate || null
+          followup_date: lead.followupDate || null,
+          followup_note: lead.followupNote || null
         })
       });
     }
@@ -4032,6 +4033,89 @@ function closeStatusMenu() {
   menu.style.transform = 'scale(0.95)';
   setTimeout(() => { menu.style.display = 'none'; }, 150);
   contextMenuLeadId = null;
+}
+
+
+// ── FOLLOWUP QUICK MODAL ──
+let _fqLeadId = null;
+let _fqOldStatus = null;
+
+function openFollowupQuick(leadId, oldStatus) {
+  _fqLeadId = leadId;
+  _fqOldStatus = oldStatus;
+  document.getElementById('fq-date').value = todayISO();
+  document.getElementById('fq-date').min = todayISO();
+  document.getElementById('fq-time').value = '';
+  document.getElementById('fq-note').value = '';
+  document.getElementById('fq-err').textContent = '';
+  openModal('modal-followup-quick');
+}
+
+function cancelFollowupQuick() {
+  // revert status back
+  const lead = state.leads.find(l => l.id === _fqLeadId);
+  if (lead && _fqOldStatus) lead.status = _fqOldStatus;
+  closeModal('modal-followup-quick');
+  _fqLeadId = null; _fqOldStatus = null;
+  renderLeads();
+}
+
+async function confirmFollowupQuick() {
+  const date = document.getElementById('fq-date').value;
+  const time = document.getElementById('fq-time').value;
+  const note = document.getElementById('fq-note').value.trim();
+  const err = document.getElementById('fq-err');
+
+  if (!date) { err.textContent = '⚠️ Date is required.'; return; }
+  if (!time) { err.textContent = '⚠️ Time is required.'; return; }
+  if (!note) { err.textContent = '⚠️ Note is required.'; return; }
+
+  const lead = state.leads.find(l => l.id === _fqLeadId);
+  if (!lead) { closeModal('modal-followup-quick'); return; }
+
+  const oldStatus = _fqOldStatus;
+  lead.status = 'followup';
+  lead.followupDate = date;
+  lead.followupTime = time;
+  lead.followupNote = note;
+
+  closeModal('modal-followup-quick');
+
+  const { supaUrl, supaKey } = state.settings;
+
+  // Track escalation
+  if (oldStatus === 'not_escalated') {
+    if (supaKey) {
+      fetch(`${supaUrl}/rest/v1/lead_escalations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ id: uid(), lead_id: lead.id, lead_name: lead.name, from_status: oldStatus, to_status: 'followup', escalated_at: new Date().toISOString(), user_email: state.user?.email || '' })
+      }).catch(e => console.error(e));
+    }
+  }
+
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ 
+          status: 'followup', 
+          followup_date: date, 
+          followup_note: note, 
+          followup_time: time,
+          sale_amount: lead.saleAmount || 0
+        })
+      });
+    } catch(e) { console.error('Followup save error:', e); }
+  }
+
+  save();
+  renderLeads();
+  renderSuspended();
+  renderHome();
+  toast(`📅 Follow-up set for ${date} at ${time}`);
+  _fqLeadId = null; _fqOldStatus = null;
 }
 
 // Close on click outside
@@ -4321,7 +4405,6 @@ function renderSalesChart() {
     monthlyCounts[m]++;
   });
 
-  const maxVal = Math.max(...monthlyTotals, 1);
   const currentMonth = new Date().getFullYear() === chartYear ? new Date().getMonth() : -1;
 
   // Summary row
@@ -4463,6 +4546,38 @@ function startAutoRefresh() {
 <div id="app-loader" style="display:none;position:fixed;inset:0;background:#0d0f14;z-index:9998;flex-direction:column;align-items:center;justify-content:center;gap:16px">
   <div style="width:44px;height:44px;border:3px solid #ffffff10;border-top-color:var(--accent);border-radius:50%;animation:rotateRing .7s linear infinite"></div>
   <div style="font-family:var(--font-head);font-size:14px;font-weight:600;color:var(--text2)">Loading your workspace...</div>
+</div>
+<!-- FOLLOWUP QUICK MODAL -->
+<div class="modal-overlay" id="modal-followup-quick">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title">
+      📅 Set Follow-up
+      <button class="modal-close" onclick="closeModal('modal-followup-quick')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date *</label>
+        <input type="date" id="fq-date" min="">
+      </div>
+      <div class="form-group">
+        <label>Time *</label>
+        <input type="time" id="fq-time">
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Follow-up Note *</label>
+        <textarea id="fq-note" placeholder="What's the follow-up about?" style="min-height:80px"></textarea>
+      </div>
+    </div>
+    <div class="err-msg" id="fq-err" style="text-align:left;margin-bottom:8px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cancelFollowupQuick()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmFollowupQuick()">Confirm Follow-up</button>
+    </div>
+  </div>
 </div>
 </body>
 </html>
