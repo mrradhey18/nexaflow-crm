@@ -286,7 +286,7 @@ nav { flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 2
     width: 100%;
     box-sizing: border-box;
   }
-#page-home .section { overflow: hidden; }
+#page-home .section { overflow: visible; }
 
 /* ── CONTEXT MENU ── */
 .status-menu-item {
@@ -502,7 +502,7 @@ nav { flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 2
     background: #00000090;
     z-index: 1000;
     align-items: center; justify-content: center;
-    backdrop-filter: blur(4px);
+    backdrop-filter: none;
   }
 
   .modal-overlay.open { display: flex; animation: fadeIn .15s ease; }
@@ -934,11 +934,15 @@ nav { flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 2
 .login-box {
   position: relative;
   z-index: 10;
-  animation: fadeInUp .6s cubic-bezier(.16,1,.3,1) forwards, floatUp 5s ease-in-out 1s infinite;
-  background: rgba(19, 22, 30, 0.85);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(79, 142, 247, 0.15);
-  box-shadow: 0 0 0 1px rgba(79,142,247,0.05), 0 32px 64px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+  width: 420px;
+  max-width: 92vw;
+  padding: 36px;
+  border-radius: 20px;
+  background: rgba(13, 17, 28, 0.85);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 0 0 1px rgba(79,142,247,0.06), 0 32px 80px rgba(0,0,0,0.7);
+  animation: fadeInUp .5s cubic-bezier(.16,1,.3,1) forwards;
 }
 
 /* Glowing border on login box */
@@ -1067,12 +1071,21 @@ html { font-size: 16px; }
   .stat-icon { display: none; }
 
   /* ── LEAD OVERVIEW FIX ── */
-  #page-home .section > div[style*="grid-template-columns:220px"] {
+#page-home .section > div[style*="grid-template-columns:220px"] {
     display: flex !important;
     flex-direction: column !important;
-    align-items: center !important;
+    align-items: stretch !important;
     gap: 16px !important;
     padding: 0 !important;
+    width: 100% !important;
+  }
+
+  #pie-stats {
+    grid-template-columns: 1fr 1fr !important;
+    width: 100% !important;
+    display: grid !important;
+    gap: 8px !important;
+    padding: 0 4px !important;
   }
 
   canvas#leads-pie {
@@ -1138,6 +1151,118 @@ html { font-size: 16px; }
   .stat-value { font-size: 22px; }
 }
 
+/* ── MOBILE FIXES ── */
+@media (max-width: 768px) {
+
+  /* Give content bottom padding so FAB doesn't cover last row */
+  #content { padding-bottom: 80px !important; }
+
+  /* Sales 4-col → 2-col */
+  #page-sales .stats-row {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Action page table columns — hide less important cols */
+  #page-action table th:nth-child(4),
+  #page-action table td:nth-child(4),
+  #page-action table th:nth-child(5),
+  #page-action table td:nth-child(5) {
+    display: none;
+  }
+
+  /* Leads table — hide GBP URL and Reviews cols */
+  #page-leads table th:nth-child(6),
+  #page-leads table td:nth-child(6),
+  #page-leads table th:nth-child(7),
+  #page-leads table td:nth-child(7) {
+    display: none;
+  }
+
+  /* Follow-up popup full width */
+  #followup-popup {
+    width: calc(100vw - 24px) !important;
+    right: 12px !important;
+    left: 12px !important;
+  }
+
+  /* Context menu — prevent off-screen */
+  #status-context-menu {
+    max-width: calc(100vw - 24px);
+  }
+
+  /* Funnel page — stack the label/bar/badge on mobile */
+  #page-funnel .section > div:last-child > div {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+
+  #page-funnel [style*="width:160px"] {
+    width: 100% !important;
+    text-align: left !important;
+  }
+
+  #page-funnel [style*="width:90px"] {
+    width: 100% !important;
+  }
+
+  /* Modal actions stack on tiny screens */
+  .modal-actions {
+    flex-wrap: wrap;
+  }
+
+  /* Suspended table — hide note col */
+  #suspended-tbody td:nth-child(4),
+  #page-suspended table th:nth-child(4) {
+    display: none;
+  }
+
+  /* Contacts grid on very small */
+  .contacts-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Settings page input full width */
+  #profile-name-input {
+    width: 100% !important;
+  }
+
+  .setting-item {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* Topbar page title smaller */
+  .page-title {
+    font-size: 14px !important;
+  }
+
+  /* Radio options wrap properly */
+  .radio-group {
+    gap: 6px;
+  }
+
+  .radio-option {
+    font-size: 11.5px;
+    padding: 5px 9px;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 360px) {
+  #content { padding: 10px; padding-bottom: 80px; }
+
+  #page-sales .stats-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .stat-value { font-size: 20px; }
+
+  .modal { padding: 14px !important; }
+
+  .form-row { grid-template-columns: 1fr !important; }
+}
+
 /* Tablet */
 @media (min-width: 769px) and (max-width: 1024px) {
   #sidebar { width: 200px; flex-shrink: 0; }
@@ -1199,25 +1324,55 @@ img { -webkit-user-drag: none; }
 </style>
 </head>
 <body>
-
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-particles" id="login-particles"></div>
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="logo-icon" id="login-logo-icon">N</div>
+
+  <!-- Top bar -->
+  <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:18px 28px;z-index:20">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo-icon" id="login-logo-icon" style="width:36px;height:36px;font-size:15px">N</div>
       <img id="login-logo-img" style="display:none;width:36px;height:36px;border-radius:8px;object-fit:contain">
-<span style="font-family:var(--font-head);font-weight:800;font-size:20px;color:#ffffff">Nexaflow<span style="color:var(--accent)">.</span></span>
+      <div>
+        <div style="font-family:var(--font-head);font-weight:800;font-size:16px;color:#fff;line-height:1">NexaFlow</div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text3);text-transform:uppercase">CRM System</div>
+      </div>
     </div>
-    <div class="login-title">Welcome back</div>
-    <div class="login-sub">Sign in to your CRM workspace</div>
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;border:1px solid #22c55e33;background:#22c55e0a">
+      <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;display:inline-block"></span>
+      <span style="font-size:11px;font-weight:700;color:#22c55e;letter-spacing:.08em">LIVE</span>
+    </div>
+  </div>
+
+  <div class="login-box">
+    <div style="margin-bottom:28px">
+      <div style="font-family:var(--font-head);font-weight:800;font-size:26px;color:#fff;margin-bottom:6px">Welcome back</div>
+      <div style="font-size:13px;color:var(--text3)">Sign in to your NexaFlow workspace.</div>
+    </div>
+
+    <!-- Divider -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:11px;color:var(--text3);letter-spacing:.06em">Enter your credentials</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+
     <div class="login-form">
-      <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@company.com" autocomplete="email"></div>
-      <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="form-group">
+        <label style="color:var(--accent);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:none">Email address</label>
+        <input type="email" id="login-email" placeholder="you@company.com" autocomplete="email"
+          style="background:#ffffff0d;border:1.5px solid #ffffff1a;border-radius:12px;color:#fff;font-size:14px;padding:13px 16px">
+      </div>
+      <div class="form-group">
+        <label style="color:var(--accent);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:none">Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+          style="background:#ffffff0d;border:1.5px solid #ffffff1a;border-radius:12px;color:#fff;font-size:14px;padding:13px 16px"
+          onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
       <div class="err-msg" id="login-err"></div>
-      <button class="btn btn-primary login-btn" id="login-btn" onclick="doLogin()">
-  <span>Sign In</span>
-</button>
+      <button class="btn btn-primary login-btn" id="login-btn" onclick="doLogin()" style="margin-top:8px;padding:14px;font-size:15px;font-weight:700;border-radius:12px;letter-spacing:.01em">
+        <span>Sign in &nbsp;→</span>
+      </button>
     </div>
   </div>
 </div>
@@ -2353,6 +2508,7 @@ function toggleSidebar() {
 
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
 }
 
 // ── SUPABASE SYNC ──
@@ -4347,7 +4503,9 @@ async function confirmFollowupQuick() {
 
 // Close on click outside
 document.addEventListener('click', e => {
-  if (!document.getElementById('status-context-menu')?.contains(e.target)) {
+  const menu = document.getElementById('status-context-menu');
+  const isOpen = menu && menu.style.display !== 'none';
+  if (isOpen && !menu.contains(e.target)) {
     closeStatusMenu();
   }
 });
