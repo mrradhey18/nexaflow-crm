@@ -199,7 +199,7 @@ nav { flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 2
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 24px;
-    position: sticky; top: 0; z-index: 50;
+    position: sticky; top: 0; z-index: 60;
     backdrop-filter: blur(10px);
   }
 
@@ -236,7 +236,7 @@ nav { flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 2
   .btn-success:hover { background: #22c55e22; }
 
   /* ── CONTENT ── */
-#content { flex: 1; padding: 24px; width: 100%; box-sizing: border-box; overflow-x: hidden; }
+#content { flex: 1; padding: 24px 24px 24px 32px; width: 100%; box-sizing: border-box; overflow-x: hidden; }
 
   /* ── PAGES ── */
   .page { display: none; }
@@ -497,12 +497,11 @@ nav { flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 2
   .icon-btn svg { width: 13px; height: 13px; stroke-width: 1.8; }
 
   /* ── MODAL ── */
-  .modal-overlay {
+.modal-overlay {
     display: none; position: fixed; inset: 0;
     background: #00000090;
     z-index: 1000;
     align-items: center; justify-content: center;
-    backdrop-filter: none;
   }
 
   .modal-overlay.open { display: flex; animation: fadeIn .15s ease; }
@@ -1040,12 +1039,11 @@ html { font-size: 16px; }
   #main { margin-left: 0; }
   #menu-toggle { display: flex; }
 
-  #sidebar-overlay {
+#sidebar-overlay {
     display: none;
     position: fixed; inset: 0;
     background: #00000060;
     z-index: 99;
-    backdrop-filter: blur(2px);
   }
   #sidebar-overlay.show { display: block; }
 
@@ -1321,6 +1319,7 @@ img { -webkit-user-drag: none; }
   will-change: transform;
   backface-visibility: hidden;
 }
+
 </style>
 </head>
 <body>
@@ -1438,9 +1437,7 @@ img { -webkit-user-drag: none; }
     </div>
   </div>
 </aside>
-
-<div id="sidebar-overlay" onclick="closeSidebar()"></div>
-
+<div id="sidebar-overlay" onclick="closeSidebar()" style="display:none;position:fixed;inset:0;background:#00000060;z-index:99"></div>
 <!-- MAIN -->
 <div id="main">
   <!-- TOPBAR -->
@@ -1471,6 +1468,17 @@ img { -webkit-user-drag: none; }
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
   <span id="followup-bell-dot" style="display:none;position:absolute;top:6px;right:6px;width:8px;height:8px;background:var(--red);border-radius:50%;border:2px solid var(--surface)"></span>
 </button>
+<!-- FOLLOWUP NOTIFICATION POPUP -->
+<div id="followup-popup" style="display:none;position:fixed;top:70px;right:24px;z-index:110999;width:340px;max-height:480px;overflow-y:auto;background:var(--surface);border:1px solid var(--border2);border-radius:16px;box-shadow:0 8px 32px #00000080;">
+  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+    <div style="font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+      🔔 <span>Follow-up Reminders</span>
+      <span id="followup-badge-count" class="badge badge-red" style="font-size:11px"></span>
+    </div>
+    <button onclick="closeFollowupPopup()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1">×</button>
+  </div>
+  <div id="followup-popup-list" style="padding:12px"></div>
+</div>
       <button class="btn btn-primary" onclick="openQuickModal('lead')">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New Lead
@@ -1503,19 +1511,18 @@ img { -webkit-user-drag: none; }
           <div class="stat-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
         </div>
       </div>
-
     <div class="section" style="margin-bottom:16px;overflow:visible">
   <div class="section-head">
     <div class="section-title">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 010 20"/><path d="M2 12h20"/></svg>
       Lead Overview
     </div>
-<div id="lead-chart-legend" style="display:none"></div>
+    <div id="lead-chart-legend" style="display:flex;gap:16px;font-size:12px;color:var(--text2)"></div>
   </div>
-<div style="display:grid;grid-template-columns:220px 1fr;gap:32px;align-items:center;width:100%;padding:8px 16px;box-sizing:border-box;min-width:0"></div>
+<div style="display:grid;grid-template-columns:220px 1fr;gap:48px;align-items:center;width:100%;padding:8px 16px">
   <!-- PIE CHART -->
-  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0;min-width:0">
-    <div style="position:relative;width:210px;height:210px;flex-shrink:0">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0">
+    <div style="position:relative;width:210px;height:210px">
       <canvas id="leads-pie" width="210" height="210" style="filter:drop-shadow(0 4px 20px rgba(0,0,0,0.12))"></canvas>
       <div id="pie-center" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
         <div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--text);line-height:1" id="pie-total">0</div>
@@ -1525,7 +1532,8 @@ img { -webkit-user-drag: none; }
   </div>
 
   <!-- STAT CARDS GRID -->
-<div id="pie-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;overflow:visible;padding:4px 2px;min-width:0;box-sizing:border-box"></div>
+  <div id="pie-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;overflow:visible;padding:4px 2px"></div>
+
 </div>
 </div>
 <!-- FOLLOW-UP ALERTS -->
@@ -1562,7 +1570,8 @@ img { -webkit-user-drag: none; }
   <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px" onclick="openQuickModal('call')">+ Schedule</button>
 </div>
           </div>
-          <div id="calls-list"></div>
+          <div id="calls-list">
+          </div>
         </div>
       </div>
     </div>
@@ -1812,8 +1821,8 @@ img { -webkit-user-drag: none; }
     </div>
   </div>
 </div>
-<div class="page" id="page-contacts" style="width:100%">
-      <div class="section" style="width:100%">
+<div class="page" id="page-contacts" style="width:100%;padding-top:0">
+      <div class="section" style="width:100%;margin-top:0">
         <div class="section-head">
           <div class="section-title">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
@@ -2256,18 +2265,6 @@ img { -webkit-user-drag: none; }
     </div>
   </div>
 </div>
-<!-- FOLLOWUP NOTIFICATION POPUP -->
-<div id="followup-popup" style="display:none;position:fixed;top:70px;right:24px;z-index:8000;width:340px;max-height:480px;overflow-y:auto;background:var(--surface);border:1px solid var(--border2);border-radius:16px;box-shadow:0 8px 32px #00000080;">
-  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-    <div style="font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
-      🔔 <span>Follow-up Reminders</span>
-      <span id="followup-badge-count" class="badge badge-red" style="font-size:11px"></span>
-    </div>
-    <button onclick="closeFollowupPopup()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1">×</button>
-  </div>
-  <div id="followup-popup-list" style="padding:12px"></div>
-</div>
-
 
 <!-- QUICK STATUS CONTEXT MENU -->
 <div id="status-context-menu" style="display:none;position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 8px 32px #00000080;padding:6px;min-width:200px">
@@ -2501,8 +2498,15 @@ if (id === 'leads') { renderLeads(); renderLeadsStats(); }
 }
 
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('sidebar-overlay').classList.toggle('show');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const isOpen = sidebar.classList.toggle('open');
+  if (isOpen) {
+    overlay.style.display = 'block';
+  } else {
+    overlay.style.display = 'none';
+    overlay.classList.remove('show');
+  }
 }
 
 function closeSidebar() {
@@ -3979,32 +3983,36 @@ function getTodayFollowups() {
 
 function updateFollowupBell() {
   const overdue = getOverdueFollowups();
-  const bell = document.getElementById('followup-bell-dot');
+  const today = getTodayFollowups();
+  const all = [...overdue, ...today.filter(l => !overdue.find(o => o.id === l.id))];
+  const dot = document.getElementById('followup-bell-dot');
   const badge = document.getElementById('followup-badge-count');
-  if (overdue.length > 0) {
-    bell.style.display = '';
-    badge.textContent = overdue.length;
-    badge.style.display = '';
+  if (!dot) return;
+  if (all.length > 0) {
+    dot.style.display = 'block';
+    if (badge) { badge.textContent = all.length; badge.style.display = ''; }
   } else {
-    bell.style.display = 'none';
-    badge.style.display = 'none';
+    dot.style.display = 'none';
+    if (badge) badge.style.display = 'none';
   }
 }
 
 function toggleFollowupPopup() {
   const popup = document.getElementById('followup-popup');
-  const isOpen = popup.style.display !== 'none';
-  if (isOpen) {
+  if (!popup) return;
+  
+  if (popup.style.display === 'block') {
     popup.style.display = 'none';
   } else {
+    popup.style.display = 'block';
     renderFollowupPopup();
-    popup.style.display = '';
   }
 }
 
 function closeFollowupPopup() {
   document.getElementById('followup-popup').style.display = 'none';
 }
+
 
 function renderFollowupPopup() {
   const today = todayISO();
@@ -4054,7 +4062,7 @@ function renderFollowupHomeSection() {
     return;
   }
 
-  el.style.display = '';
+ el.style.display = 'none';
   el.innerHTML = `
     <div class="section-head">
       <div class="section-title">
@@ -4502,10 +4510,19 @@ async function confirmFollowupQuick() {
 
 // Close on click outside
 document.addEventListener('click', e => {
+  // Close status menu
   const menu = document.getElementById('status-context-menu');
   const isOpen = menu && menu.style.display !== 'none';
   if (isOpen && !menu.contains(e.target)) {
     closeStatusMenu();
+  }
+  // Close followup popup
+  const popup = document.getElementById('followup-popup');
+  const bell = document.getElementById('followup-bell');
+  if (popup && popup.style.display !== 'none') {
+    if (!popup.contains(e.target) && !bell.contains(e.target)) {
+      popup.style.display = 'none';
+    }
   }
 });
 
@@ -5341,6 +5358,18 @@ function playTringSound() {
 
 // Start the checker — runs every 15 seconds
 setInterval(checkCallReminders, 15000);
+
+// Close followup popup on outside click
+document.addEventListener('click', function(e) {
+  const popup = document.getElementById('followup-popup');
+  const bell = document.getElementById('followup-bell');
+  if (popup && bell && popup.style.display === 'block') {
+    if (!popup.contains(e.target) && !bell.contains(e.target)) {
+      popup.style.display = 'none';
+    }
+  }
+});
+
 </script>
 <div id="app-loader" style="display:none;position:fixed;inset:0;background:#0d0f14;z-index:9998;flex-direction:column;align-items:center;justify-content:center;gap:16px">
   <div style="width:44px;height:44px;border:3px solid #ffffff10;border-top-color:var(--accent);border-radius:50%;animation:rotateRing .7s linear infinite"></div>
@@ -5378,5 +5407,6 @@ setInterval(checkCallReminders, 15000);
     </div>
   </div>
 </div>
+
 </body>
 </html>
