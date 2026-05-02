@@ -1,6 +1,6 @@
 // ── STATE ──
 const DB_KEY = 'nexaflow_v1';
-const APP_LOGO = "data:image/png;base64,";
+const APP_LOGO = "./favicon.png";
 let state = {
   user: null,
   leads: [],
