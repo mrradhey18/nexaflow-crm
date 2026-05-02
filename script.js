@@ -245,9 +245,10 @@ async function fetchAllFromSupabase() {
         website: r.website, report: r.report, gbpRank: r.gbp_rank, gbpUrl: r.gbp_url,
         reviews: r.reviews, note: r.note, status: r.status, saleAmount: r.sale_amount,
         convertedAt: r.converted_at, followupDate: r.followup_date || '',
+        timing: r.timing || '',
         followupNote: r.followup_note || '', followupTime: r.followup_time || '',
-        createdAt: r.created_at, statusChangedAt: r.status_changed_at || r.created_at,
-        userEmail: r.user_email
+     createdAt: r.created_at, statusChangedAt: r.status_changed_at || r.created_at,
+        userEmail: r.user_email, timing: r.timing || ''
       }));
     }
 
@@ -457,7 +458,7 @@ function renderLeads() {
   tb.innerHTML = paginated.map(l => `
     <tr oncontextmenu="openStatusMenu(event,'${l.id}')" style="cursor:context-menu;${getAgingDays(l) >= 5 ? 'background:rgba(245,158,11,0.06);outline:1px solid rgba(245,158,11,0.25);' : ''}">
       <td class="td-name">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+<div>
           ${getAgingDays(l) >= 5 ? `<span title="${getAgingDays(l)} days in this status" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(245,158,11,0.12);color:#f59e0b;white-space:nowrap;flex-shrink:0">⏳ ${getAgingDays(l)}d</span>` : ''}
           ${l.note ? `<span style="position:relative;display:inline-flex;align-items:center;gap:6px">
             <span class="note-icon-wrap" style="position:relative;display:inline-flex">
@@ -466,6 +467,9 @@ function renderLeads() {
             </span>
             ${esc(l.name)}
           </span>` : esc(l.name)}
+          ${l.timing ? `<span style="font-size:11px;color:var(--accent);font-weight:7
+            00;padding:2px 8px;border-radius:20px">⏱ ${esc(l.timing)}</span>` : ''}
+        </div>
         </div>
       </td>
       <td>
@@ -521,11 +525,7 @@ function renderLeadsPagination(total, totalPages) {
       <button class="icon-btn" onclick="goLeadsPage(${leadsPage - 1})" ${leadsPage <= 1 ? 'disabled style="opacity:0.3;cursor:not-allowed"' : ''}>
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
       </button>
-      <div style="display:flex;gap:4px">
-        ${Array.from({length: totalPages}, (_, i) => i + 1).map(p => `
-          <button onclick="goLeadsPage(${p})" style="width:28px;height:28px;border-radius:6px;border:1px solid ${p === leadsPage ? 'var(--accent)' : 'var(--border)'};background:${p === leadsPage ? 'var(--accent)' : 'transparent'};color:${p === leadsPage ? '#fff' : 'var(--text2)'};font-size:12px;font-weight:600;cursor:pointer;transition:all .18s">${p}</button>
-        `).join('')}
-      </div>
+      <span style="font-size:12px;font-weight:600;color:var(--text2)">${leadsPage} / ${totalPages}</span>
       <button class="icon-btn" onclick="goLeadsPage(${leadsPage + 1})" ${leadsPage >= totalPages ? 'disabled style="opacity:0.3;cursor:not-allowed"' : ''}>
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg>
       </button>
@@ -545,14 +545,26 @@ function goLeadsPage(page) {
 
 function setLeadsFilter(f) { leadsFilter = f; leadsPage = 1; renderLeads(); }
 
+let suspendedPage = 1;
+const SUSPENDED_PER_PAGE = 10;
+
 function renderSuspended() {
   const suspended = state.leads.filter(l => l.status === 'suspended');
   const tb = document.getElementById('suspended-tbody');
+
   if (!suspended.length) {
     tb.innerHTML = `<tr><td colspan="5"><div class="empty-state"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg><p>No suspended leads</p></div></td></tr>`;
+    renderSuspendedPagination(0, 1);
     return;
   }
-  tb.innerHTML = suspended.map(l => `
+
+  const totalPages = Math.max(1, Math.ceil(suspended.length / SUSPENDED_PER_PAGE));
+  if (suspendedPage > totalPages) suspendedPage = totalPages;
+
+  const start = (suspendedPage - 1) * SUSPENDED_PER_PAGE;
+  const paginated = suspended.slice(start, start + SUSPENDED_PER_PAGE);
+
+  tb.innerHTML = paginated.map(l => `
     <tr>
       <td class="td-name">${esc(l.name)}</td>
       <td>${l.phone || '—'}</td>
@@ -567,6 +579,44 @@ function renderSuspended() {
         </div>
       </td>
     </tr>`).join('');
+
+  renderSuspendedPagination(suspended.length, totalPages);
+}
+
+function renderSuspendedPagination(total, totalPages) {
+  const existing = document.getElementById('suspended-pagination');
+  if (existing) existing.remove();
+  if (totalPages <= 1) return;
+
+  const container = document.createElement('div');
+  container.id = 'suspended-pagination';
+  container.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)';
+
+  const start = total === 0 ? 0 : (suspendedPage - 1) * SUSPENDED_PER_PAGE + 1;
+  const end = Math.min(suspendedPage * SUSPENDED_PER_PAGE, total);
+
+  container.innerHTML = `
+    <div style="font-size:12px;color:var(--text3)">
+      Showing <span style="color:var(--text);font-weight:600">${start}–${end}</span> of <span style="color:var(--text);font-weight:600">${total}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="icon-btn" onclick="goSuspendedPage(${suspendedPage - 1})" ${suspendedPage <= 1 ? 'disabled style="opacity:0.3;cursor:not-allowed"' : ''}>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
+      </button>
+      <button class="icon-btn" onclick="goSuspendedPage(${suspendedPage + 1})" ${suspendedPage >= totalPages ? 'disabled style="opacity:0.3;cursor:not-allowed"' : ''}>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg>
+      </button>
+    </div>`;
+
+  document.querySelector('#page-suspended .section').appendChild(container);
+}
+
+function goSuspendedPage(page) {
+  const suspended = state.leads.filter(l => l.status === 'suspended');
+  const totalPages = Math.max(1, Math.ceil(suspended.length / SUSPENDED_PER_PAGE));
+  if (page < 1 || page > totalPages) return;
+  suspendedPage = page;
+  renderSuspended();
 }
 
 function statusClass(s) {
@@ -648,6 +698,7 @@ function openLeadModal(id) {
     document.getElementById('lead-reviews').value = l.reviews || '';
     document.getElementById('lead-gbp-url').value = l.gbpUrl || '';
     document.getElementById('lead-note').value = l.note || '';
+    document.getElementById('lead-timing').value = l.timing || '';
     document.getElementById('lead-sale').value = l.saleAmount || '';
     setLeadStatus(l.status || 'not_escalated');
     if (l.status === 'converted') document.getElementById('sale-amount-row').style.display = '';
@@ -660,6 +711,7 @@ function openLeadModal(id) {
     document.getElementById('lead-phone').value = '+91';
     document.getElementById('lead-wapp').value = '+91';
     document.getElementById('lead-report').value = 'no';
+    document.getElementById('lead-timing').value = '';
     setLeadStatus('not_escalated');
     document.getElementById('followup-date-row').style.display = 'none';
     document.getElementById('lead-followup-date').value = '';
@@ -678,7 +730,16 @@ function setLeadStatus(val) {
 function onStatusChange(e) {
   const val = e.target.value;
   document.getElementById('sale-amount-row').style.display = val === 'converted' ? '' : 'none';
-  document.getElementById('followup-date-row').style.display = val === 'followup' ? '' : 'none';
+  document.getElementById('followup-date-row').style.display = 'none';
+  if (val === 'followup') {
+    const editId = document.getElementById('lead-edit-id').value;
+    if (editId) {
+      openFollowupQuick(editId);
+    } else {
+      // For new leads, just show the simple date row since lead doesn't exist yet
+      document.getElementById('followup-date-row').style.display = '';
+    }
+  }
 }
 
 async function saveLead(createAnother = false) {
@@ -709,14 +770,16 @@ async function saveLead(createAnother = false) {
     reviews: document.getElementById('lead-reviews').value.trim(),
     gbp_url: document.getElementById('lead-gbp-url').value.trim(),
     note: document.getElementById('lead-note').value.trim(),
+    timing: document.getElementById('lead-timing').value.trim(),
     status,
     sale_amount: status === 'converted' ? parseFloat(document.getElementById('lead-sale').value) || 0 : 0,
-    converted_at: status === 'converted' ? new Date().toISOString() : null,
-    status_changed_at: statusActuallyChanged ? new Date().toISOString() : (existingLead?.statusChangedAt || new Date().toISOString()),
-    created_at: editId ? (state.leads.find(l=>l.id===editId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    converted_at: status === 'converted' ? nowISOString() : null,
+    status_changed_at: statusActuallyChanged ? nowISOString() : (existingLead?.statusChangedAt || nowISOString()),
+    created_at: editId ? (state.leads.find(l=>l.id===editId)?.createdAt || nowISOString()) : nowISOString(),
     followup_date: status === 'followup' ? document.getElementById('lead-followup-date').value : null,
     followup_note: null,
     followup_time: null,
+    timing: document.getElementById('lead-timing').value.trim(),
     user_email: state.user?.email || ''
   };
 
@@ -734,10 +797,11 @@ async function saveLead(createAnother = false) {
   const localLead = {
     id: lead.id, name: lead.name, city: lead.city, phone: lead.phone, wapp: lead.wapp,
     website: lead.website, report: lead.report, gbpRank: lead.gbp_rank, gbpUrl: lead.gbp_url,
-    reviews: lead.reviews, note: lead.note, status: lead.status, saleAmount: lead.sale_amount,
+    reviews: lead.reviews, timing: lead.timing || '', status: lead.status, saleAmount: lead.sale_amount,
     convertedAt: lead.converted_at, createdAt: lead.created_at,
     followupDate: lead.followup_date || '', followupNote: lead.followup_note || '',
-    followupTime: lead.followup_time || '', userEmail: lead.user_email
+    followupTime: lead.followup_time || '', userEmail: lead.user_email,
+    timing: lead.timing || ''
   };
 
   if (editId) {
@@ -766,6 +830,7 @@ async function saveLead(createAnother = false) {
     document.getElementById('lead-phone').value = '+91';
     document.getElementById('lead-wapp').value = '+91';
     setLeadStatus('not_escalated');
+    document.getElementById('lead-timing').value = '';
     toast('Lead saved! Form ready for next lead ✚');
     document.getElementById('lead-name').focus();
   } else {
@@ -785,13 +850,42 @@ async function deleteLead(id) {
     } catch(e) { console.error('Lead delete error:', e); }
   }
   state.leads = state.leads.filter(l => l.id !== id);
+  suspendedPage = 1;
   save(); renderLeads(); renderSuspended(); renderHome();
   toast('Lead deleted');
 }
 
-function restoreLead(id) {
+async function restoreLead(id) {
   const l = state.leads.find(x => x.id === id);
-  if (l) { l.status = 'not_escalated'; save(); renderSuspended(); renderLeads(); toast('Lead restored'); }
+  if (!l) return;
+
+  l.status = 'not_escalated';
+  l.statusChangedAt = nowISOString();
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supaKey,
+          'Authorization': 'Bearer ' + supaKey,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          status: 'not_escalated',
+          status_changed_at: l.statusChangedAt
+        })
+      });
+    } catch(e) { console.error('Restore error:', e); toast('Failed to restore lead'); return; }
+  }
+
+  suspendedPage = 1;
+  save();
+  renderSuspended();
+  renderLeads();
+  toast('Lead restored');
 }
 
 // ── TASKS ──
@@ -811,7 +905,7 @@ async function saveTask() {
     date: document.getElementById('task-date').value || todayISO(),
     priority: document.getElementById('task-priority').value,
     note: document.getElementById('task-note').value.trim(),
-    done: false, createdAt: new Date().toISOString()
+    done: false, createdAt: nowISOString()
   };
   const { supaUrl, supaKey } = state.settings;
   if (supaKey) {
@@ -985,7 +1079,7 @@ async function saveCall() {
     time: document.getElementById('call-time').value,
     note: document.getElementById('call-note').value.trim(),
     date, reminder_mins: reminderMins ? parseInt(reminderMins) : null,
-    done: false, createdAt: new Date().toISOString()
+    done: false, createdAt: nowISOString()
   };
 
   const { supaUrl, supaKey } = state.settings;
@@ -1039,7 +1133,7 @@ async function saveContact() {
     city: document.getElementById('contact-city').value.trim(),
     wapp: document.getElementById('contact-wapp').value.trim(),
     note: document.getElementById('contact-note').value.trim(),
-    created_at: new Date().toISOString(),
+    created_at: nowISOString(),
     user_email: state.user?.email || ''
   };
   const { supaUrl, supaKey } = state.settings;
@@ -1182,7 +1276,7 @@ async function saveSale() {
     id: uid(), lead_id: leadId, lead_name: lead?.name || '', amount,
     transaction_id: document.getElementById('sale-txn').value.trim(),
     date, note: document.getElementById('sale-note').value.trim(),
-    created_at: new Date().toISOString(), user_email: state.user?.email || ''
+    created_at: nowISOString(), user_email: state.user?.email || ''
   };
 
   const { supaUrl, supaKey } = state.settings;
@@ -1355,9 +1449,25 @@ function getAgingDays(lead) {
 }
 
 function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
-function todayISO() { return new Date().toISOString().slice(0, 10); }
+function nowIST() {
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+  return ist;
+}
+
+function todayISO() {
+  const ist = nowIST();
+  return ist.getUTCFullYear() + '-' +
+    String(ist.getUTCMonth() + 1).padStart(2, '0') + '-' +
+    String(ist.getUTCDate()).padStart(2, '0');
+}
+
+function nowISOString() {
+  return nowIST().toISOString().replace(/\.\d{3}Z$/, '+05:30');
+}
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmtNum(n) { return n >= 1e7 ? (n/1e7).toFixed(2)+'Cr' : n >= 1e5 ? (n/1e5).toFixed(1)+'L' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : n.toFixed(0); }
+
 
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -1416,6 +1526,53 @@ function toggleFollowupPopup() {
 
 function closeFollowupPopup() { document.getElementById('followup-popup').style.display = 'none'; }
 
+//templates
+
+function getFollowupTemplate(note) {
+  const n = (note || '').toLowerCase();
+  
+  const templates = [
+    {
+      keywords: ['payment', 'pay', 'invoice', 'amount', 'fees'],
+      msg: `Hi! Just following up regarding the payment. Kindly let us know if you need any assistance to proceed. 🙏`
+    },
+    {
+      keywords: ['demo', 'presentation', 'show', 'meeting'],
+      msg: `Hi! We had scheduled a demo/meeting follow-up. Are you available for a quick call to discuss further? 😊`
+    },
+    {
+      keywords: ['proposal', 'quote', 'offer', 'price', 'pricing'],
+      msg: `Hi! Just checking in on the proposal we shared. Do you have any questions or would you like to discuss? 🙏`
+    },
+    {
+      keywords: ['call', 'talk', 'speak', 'discuss', 'connect'],
+      msg: `Hi! We had a follow-up call scheduled. Are you available for a quick chat right now? 📞`
+    },
+    {
+      keywords: ['website', 'site', 'design', 'development'],
+      msg: `Hi! Following up regarding your website. Would you be available for a quick call to take this forward? 🚀`
+    },
+    {
+      keywords: ['gbp', 'google', 'ranking', 'seo', 'maps'],
+      msg: `Hi! Following up regarding your Google Business Profile / ranking. Are you available for a quick call? 📍`
+    },
+    {
+      keywords: ['report', 'audit', 'analysis'],
+      msg: `Hi! Your report/audit is ready. Would you like to go over it on a quick call? 📊`
+    }
+  ];
+
+  for (const t of templates) {
+    if (t.keywords.some(k => n.includes(k))) {
+      return t.msg;
+    }
+  }
+
+  // fallback
+  return `Hi! ${note ? `We had a follow-up scheduled regarding "${note}". ` : ''}Are you available for a quick call? 🙏`;
+}
+
+
 function renderFollowupPopup() {
   const today = todayISO();
   const all = getFollowupLeads().sort((a, b) => a.followupDate > b.followupDate ? 1 : -1);
@@ -1440,8 +1597,8 @@ function renderFollowupPopup() {
         <div style="font-size:12px;color:var(--text3);margin-bottom:8px">📅 ${dateDisplay}${l.followupTime ? ' · ⏰ ' + l.followupTime : ''}${l.city ? ' · 📍 ' + esc(l.city) : ''}</div>
         ${l.followupNote ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px;padding:6px 8px;background:var(--surface3);border-radius:6px">📝 ${esc(l.followupNote)}</div>` : ''}
         <div style="display:flex;gap:6px">
-          ${l.wapp ? `<a href="https://wa.me/${l.wapp.replace(/\D/g,'')}" target="_blank" class="btn btn-success" style="padding:4px 10px;font-size:11.5px">WhatsApp</a>` : ''}
-          ${l.phone ? `<a href="tel:${esc(l.phone)}" class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">Call</a>` : ''}
+${l.wapp ? `<a href="https://wa.me/${l.wapp.replace(/\D/g,'')}?text=${encodeURIComponent(getFollowupTemplate(l.followupNote))}" target="_blank" class="btn btn-success" style="padding:4px 10px;font-size:11.5px">WhatsApp</a>` : ''}
+        ${l.phone ? `<a href="tel:${esc(l.phone)}" class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">Call</a>` : ''}
           <button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px" onclick="closeFollowupPopup();editLead('${l.id}')">Edit</button>
         </div>
       </div>`;
@@ -1554,7 +1711,7 @@ async function saveProfileName() {
 async function saveProfileToSupabase() {
   const { supaUrl, supaKey } = state.settings;
   if (!supaKey || !state.user?.email) return;
-  const payload = { user_email: state.user.email, display_name: state.user.name || '', profile_img: state.user.profileImg || '', updated_at: new Date().toISOString() };
+  const payload = { user_email: state.user.email, display_name: state.user.name || '', profile_img: state.user.profileImg || '', updated_at: nowISOString() };
   try {
     await fetch(`${supaUrl}/rest/v1/profiles?user_email=eq.${encodeURIComponent(state.user.email)}`, {
       method: 'PATCH',
@@ -1603,7 +1760,7 @@ async function applyQuickStatus(newStatus) {
   if (!lead) return;
   const oldStatus = lead.status;
   lead.status = newStatus;
-  lead.statusChangedAt = new Date().toISOString();
+  lead.statusChangedAt = nowISOString();
 
   if (oldStatus === 'not_escalated' && newStatus !== 'not_escalated') {
     const { supaUrl, supaKey } = state.settings;
@@ -1611,7 +1768,7 @@ async function applyQuickStatus(newStatus) {
       fetch(`${supaUrl}/rest/v1/lead_escalations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ id: uid(), lead_id: lead.id, lead_name: lead.name, from_status: oldStatus, to_status: newStatus, escalated_at: new Date().toISOString(), user_email: state.user?.email || '' })
+        body: JSON.stringify({ id: uid(), lead_id: lead.id, lead_name: lead.name, from_status: oldStatus, to_status: newStatus, escalated_at: nowISOString(), user_email: state.user?.email || '' })
       }).catch(e => console.error('Escalation save error:', e));
     }
   }
@@ -1626,7 +1783,7 @@ async function applyQuickStatus(newStatus) {
       if (isNaN(parsed) || parsed <= 0) { alert('⚠️ Please enter a valid amount greater than 0.'); continue; }
       amount = parsed; break;
     }
-    lead.saleAmount = amount; lead.convertedAt = new Date().toISOString();
+    lead.saleAmount = amount; lead.convertedAt = nowISOString();
   }
 
   if (newStatus === 'followup') { closeStatusMenu(); openFollowupQuick(lead.id, lead.status); return; }
@@ -1644,7 +1801,7 @@ async function applyQuickStatus(newStatus) {
     }
 
     if (newStatus === 'converted' && oldStatus !== 'converted' && lead.saleAmount > 0) {
-      const sale = { id: uid(), lead_id: lead.id, lead_name: lead.name, amount: lead.saleAmount, transaction_id: '', date: new Date().toISOString().slice(0, 10), note: 'Auto-added on conversion', created_at: new Date().toISOString(), user_email: state.user?.email || '' };
+      const sale = { id: uid(), lead_id: lead.id, lead_name: lead.name, amount: lead.saleAmount, transaction_id: '', date: nowISOString().slice(0, 10), note: 'Auto-added on conversion', created_at: nowISOString(), user_email: state.user?.email || '' };
       if (supaKey) {
         const saleRes = await fetch(`${supaUrl}/rest/v1/sales`, {
           method: 'POST',
@@ -1721,7 +1878,7 @@ async function confirmFollowupQuick() {
     fetch(`${supaUrl}/rest/v1/lead_escalations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ id: uid(), lead_id: lead.id, lead_name: lead.name, from_status: oldStatus, to_status: 'followup', escalated_at: new Date().toISOString(), user_email: state.user?.email || '' })
+      body: JSON.stringify({ id: uid(), lead_id: lead.id, lead_name: lead.name, from_status: oldStatus, to_status: 'followup', escalated_at: nowISOString(), user_email: state.user?.email || '' })
     }).catch(e => console.error(e));
   }
 
@@ -1914,7 +2071,7 @@ async function importLeadsCSV(input) {
       note: cols[10]?.replace(/^"|"$/g,'') || '',
       sale_amount: parseFloat(cols[11]) || 0,
       followup_date: cols[12]?.replace(/^"|"$/g,'') || null,
-      created_at: new Date().toISOString(), user_email: state.user?.email || ''
+      created_at: nowISOString(), user_email: state.user?.email || ''
     };
 
     if (supaKey) {
@@ -2224,9 +2381,9 @@ function startAutoRefresh() {
 // ── CALL REMINDER POPUP ──
 function checkCallReminders() {
   if (!state.user) return;
-  const now = new Date();
-  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const now = nowIST();
+  const todayStr = now.getUTCFullYear() + '-' + String(now.getUTCMonth()+1).padStart(2,'0') + '-' + String(now.getUTCDate()).padStart(2,'0');
+  const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
 
   state.calls.forEach(c => {
     if (c.done) return;
