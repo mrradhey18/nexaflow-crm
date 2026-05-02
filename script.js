@@ -1117,7 +1117,7 @@ function applyLogo(init) {
   const icons = document.querySelectorAll('#sidebar-logo-icon, #login-logo-icon');
   if (val) {
 const src =
-  val.endsWith('.png')
+  val.endsWith('favicon.png')
     ? val
     : 'data:image/png;base64,' + val;
     logos.forEach(el => { el.src = src; el.style.display = ''; });
