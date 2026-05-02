@@ -639,7 +639,7 @@
     </div>
     <div style="margin-top:16px">
       <div class="form-section-label">Lead Information</div>
-      <div class="form-row">
+   <div class="form-row">
         <div class="form-group">
           <label>Lead Name *</label>
           <input type="text" id="lead-name" placeholder="Business / Person name">
@@ -700,12 +700,16 @@
         </div>
       </div>
     </div>
-    <div style="margin-top:4px">
+ <div style="margin-top:4px">
       <div class="form-section-label">Notes</div>
-      <div class="form-row full">
+      <div class="form-row" style="grid-template-columns:1fr 130px;gap:14px;align-items:start">
         <div class="form-group">
           <label>Note</label>
-          <textarea id="lead-note" placeholder="Add any notes about this lead..."></textarea>
+          <textarea id="lead-note" placeholder="Add any notes about this lead..." style="min-height:48px;resize:none"></textarea>
+        </div>
+        <div class="form-group">
+          <label>⏱️ Timing</label>
+          <input type="text" id="lead-timing" placeholder="e.g. 10am–6pm">
         </div>
       </div>
     </div>
@@ -798,13 +802,6 @@
       <div class="cal-wrap" id="call-cal"></div>
       <input type="hidden" id="call-date">
     </div>
-    <div class="form-row full">
-      <div class="form-row full">
-        <div class="form-group">
-          <label>Note</label>
-          <input type="text" id="call-note" placeholder="Call agenda or notes...">
-        </div>
-      </div>
       <!-- REMINDER ROW -->
       <div style="padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0" id="reminder-toggle-row">
