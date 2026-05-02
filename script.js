@@ -977,10 +977,15 @@ function openCallModal() {
   dropdown.id = 'call-name-dropdown';
   dropdown.style.cssText = 'display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 8px 24px #00000080;z-index:9999;max-height:200px;overflow-y:auto;margin-top:4px';
 
-  const nameWrap = document.createElement('div');
-  nameWrap.style.cssText = 'position:relative';
-  nameInput.parentNode.insertBefore(nameWrap, nameInput);
-  nameWrap.appendChild(nameInput);
+let nameWrap = nameInput.parentNode;
+  if (!nameWrap.id || nameWrap.id !== 'call-name-wrap') {
+    const newWrap = document.createElement('div');
+    newWrap.id = 'call-name-wrap';
+    newWrap.style.cssText = 'position:relative';
+    nameInput.parentNode.insertBefore(newWrap, nameInput);
+    newWrap.appendChild(nameInput);
+    nameWrap = newWrap;
+  }
   nameWrap.appendChild(dropdown);
 
   nameInput.addEventListener('input', function() {
