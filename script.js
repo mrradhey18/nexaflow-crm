@@ -2,7 +2,7 @@
 const DB_KEY = 'nexaflow_v1';
 const APP_LOGO = "favicon.png";
 // ── TELEGRAM CONFIG ──
-const TELEGRAM_TOKEN = '8684179188:AAFb-dR43SOGhYzGNPhmAGTgpFFIdSdiLXk';
+const TELEGRAM_TOKEN = 'diLXk';
 const TELEGRAM_CHAT_ID = '6585181761';
 
 function sendTelegramNotification(message) {
