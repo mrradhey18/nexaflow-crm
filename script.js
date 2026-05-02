@@ -1,6 +1,24 @@
 // ── STATE ──
 const DB_KEY = 'nexaflow_v1';
 const APP_LOGO = "favicon.png";
+// ── TELEGRAM CONFIG ──
+const TELEGRAM_TOKEN = '8684179188:AAFb-dR43SOGhYzGNPhmAGTgpFFIdSdiLXk';
+const TELEGRAM_CHAT_ID = '6585181761';
+
+function sendTelegramNotification(message) {
+  if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
+  fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: TELEGRAM_CHAT_ID,
+      text: message,
+      parse_mode: 'HTML'
+    })
+  }).catch(e => console.log('Telegram error:', e));
+}
+
+
 let state = {
   user: null,
   leads: [],
@@ -2398,7 +2416,9 @@ function checkCallReminders() {
     const callMinutes = ch * 60 + cm;
     const reminderMins = c.reminder_mins ? parseInt(c.reminder_mins) : 0;
     const targetMinutes = callMinutes - reminderMins;
-    if (nowMinutes !== targetMinutes) return;
+    // minute window so it never gets missed
+  const catchWindow = reminderMins >= 60 ? 10 : reminderMins >= 30 ? 8 : reminderMins >= 15 ? 6 : 5;
+if (nowMinutes < targetMinutes || nowMinutes > targetMinutes + catchWindow) return;
     const alreadyFired = sessionStorage.getItem('call_alerted_' + c.id + '_' + targetMinutes);
     if (alreadyFired) return;
     sessionStorage.setItem('call_alerted_' + c.id + '_' + targetMinutes, '1');
@@ -2406,7 +2426,97 @@ function checkCallReminders() {
   });
 }
 
+// ── TASK REMINDER ──
+function checkTaskReminders() {
+  if (!state.user) return;
+  const now = nowIST();
+  const hours = now.getUTCHours();
+  const minutes = now.getUTCMinutes();
+  
+  // Only between 9AM and 9PM IST (IST = UTC+5:30, so 9AM IST = 3:30 UTC, 9PM IST = 15:30 UTC)
+  const totalMinsUTC = hours * 60 + minutes;
+  const istMins = totalMinsUTC + 330; // +5:30
+  const istHour = Math.floor((istMins % 1440) / 60);
+  if (istHour < 9 || istHour >= 21) return;
+
+  const today = todayISO();
+  state.tasks.forEach(t => {
+    if (t.done) return;
+    if (t.date && t.date !== today) return;
+
+    const intervalMins = t.priority === 'high' ? 30 : t.priority === 'low' ? 120 : 60;
+    const key = `task_reminded_${t.id}_${Math.floor((hours * 60 + minutes) / intervalMins)}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+
+    showTaskReminderPopup(t);
+  });
+}
+
+function showTaskReminderPopup(task) {
+  const intervalLabel = task.priority === 'high' ? '30 min' : task.priority === 'low' ? '2 hr' : '1 hr';
+  sendTelegramNotification(
+    '✅ <b>Task Reminder</b>\n\n' +
+    '📋 <b>' + task.title + '</b>\n' +
+    '🎯 Priority: ' + (task.priority || 'normal') + ' · every ' + intervalLabel + '\n' +
+    (task.note ? '📝 ' + task.note : '')
+  );
+  const existing = document.getElementById('task-reminder-popup');
+  if (existing) existing.remove();
+
+  const priorityColor = task.priority === 'high' ? 'var(--red)' : task.priority === 'low' ? 'var(--text3)' : 'var(--accent)';
+  const priorityBg = task.priority === 'high' ? 'var(--red-soft)' : task.priority === 'low' ? 'var(--surface2)' : 'var(--accent-soft)';
+
+  const popup = document.createElement('div');
+  popup.id = 'task-reminder-popup';
+  popup.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:99990;width:300px;background:var(--surface);border:1.5px solid ${priorityColor};border-radius:16px;box-shadow:0 8px 32px #00000080;padding:16px 18px;opacity:0;transform:translateY(20px);transition:all .25s cubic-bezier(.16,1,.3,1);font-family:var(--font-body);`;
+
+  popup.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:${priorityBg};border:1px solid ${priorityColor}33;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg fill="none" stroke="${priorityColor}" viewBox="0 0 24 24" style="width:18px;height:18px;stroke-width:2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${priorityColor};margin-bottom:3px">
+          ${task.priority === 'high' ? '🔴' : task.priority === 'low' ? '⚪' : '🔵'} ${task.priority} priority · every ${intervalLabel}
+        </div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(task.title)}</div>
+        ${task.note ? `<div style="font-size:11.5px;color:var(--text3);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ${esc(task.note)}</div>` : ''}
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button onclick="markTaskDoneFromReminder('${task.id}')" style="flex:1;padding:6px 10px;background:${priorityColor};color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font-body)">✓ Done</button>
+          <button onclick="dismissTaskReminder()" style="flex:1;padding:6px 10px;background:var(--surface2);color:var(--text3);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font-body)">Dismiss</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(popup);
+  requestAnimationFrame(() => { popup.style.opacity = '1'; popup.style.transform = 'translateY(0)'; });
+  setTimeout(() => dismissTaskReminder(), 10000);
+}
+
+function dismissTaskReminder() {
+  const popup = document.getElementById('task-reminder-popup');
+  if (!popup) return;
+  popup.style.opacity = '0';
+  popup.style.transform = 'translateY(20px)';
+  setTimeout(() => popup.remove(), 250);
+}
+
+function markTaskDoneFromReminder(id) {
+  dismissTaskReminder();
+  toggleTask(id);
+  toast('✅ Task marked as done!');
+}
+
 function showCallReminderPopup(call, reminderMins) {
+  sendTelegramNotification(
+    '📞 <b>Call Reminder</b>\n\n' +
+    '👤 <b>' + call.name + '</b>\n' +
+    '⏰ Time: ' + (call.time || '—') + '\n' +
+    '📱 Phone: ' + (call.phone || '—') + '\n' +
+    (call.note ? '📝 ' + call.note + '\n' : '') +
+    (reminderMins > 0 ? '⏱ ' + reminderMins + ' min before call' : '🔔 Call is now!')
+  );
   const existing = document.getElementById('call-reminder-popup');
   if (existing) existing.remove();
   const popup = document.createElement('div');
@@ -2484,3 +2594,4 @@ function playTringSound() {
 }
 
 setInterval(checkCallReminders, 15000);
+setInterval(checkTaskReminders, 60000); // checks every 1 min
