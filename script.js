@@ -1116,7 +1116,7 @@ function applyLogo(init) {
   const logos = document.querySelectorAll('#logo-img, #sidebar-logo-img, #login-logo-img');
   const icons = document.querySelectorAll('#sidebar-logo-icon, #login-logo-icon');
   if (val) {
-    const src = val.startsWith('data:') ? val : 'data:image/png;base64,' + val;
+    const src = val.startsWith('data:') ? val : 'favicon.png' + val;
     logos.forEach(el => { el.src = src; el.style.display = ''; });
     icons.forEach(el => { el.style.display = 'none'; });
   } else {
