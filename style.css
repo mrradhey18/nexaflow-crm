@@ -104,7 +104,7 @@ body {
 
 .logo-text {
     font-family: var(--font-head);
-    font-weight: 700; font-size: 17px;
+    font-weight: 700; font-size: 15px;
     letter-spacing: -.3px;
     color: var(--text);
 }
