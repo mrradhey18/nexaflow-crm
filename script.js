@@ -2397,7 +2397,7 @@ function startAutoRefresh() {
   setInterval(async () => {
     if (!state.user) return;
     await fetchAllFromSupabase();
-    renderHome(); renderLeads(); renderSuspended(); renderContacts(); renderSales();
+    renderHome(); renderLeads(); renderLeadsStats(); renderSuspended(); renderContacts(); renderSales();
   }, 180000);
 }
 
