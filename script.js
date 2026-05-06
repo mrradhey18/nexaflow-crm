@@ -229,15 +229,18 @@ function toggleSidebar() {
   const isOpen = sidebar.classList.toggle('open');
   if (isOpen) {
     overlay.style.display = 'block';
+    setTimeout(() => overlay.classList.add('show'), 10);
   } else {
-    overlay.style.display = 'none';
     overlay.classList.remove('show');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
   }
 }
 
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebar-overlay').classList.remove('show');
+  const overlay = document.getElementById('sidebar-overlay');
+  overlay.classList.remove('show');
+  overlay.style.display = 'none';
 }
 
 // ── SUPABASE SYNC ──
@@ -260,8 +263,9 @@ async function fetchAllFromSupabase() {
         reviews: r.reviews, note: r.note, status: r.status, saleAmount: r.sale_amount,
         convertedAt: r.converted_at, followupDate: r.followup_date || '',
         timing: r.timing || '',
-        followupNote: r.followup_note || '', followupTime: r.followup_time || '',
-     createdAt: r.created_at, statusChangedAt: r.status_changed_at || r.created_at,
+       followupNote: r.followup_note || '', followupTime: r.followup_time || '',
+      followupType: r.followup_type || '', followupAmount: r.followup_amount || 0,
+      createdAt: r.created_at, statusChangedAt: r.status_changed_at || r.created_at,
         userEmail: r.user_email, timing: r.timing || ''
       }));
     }
@@ -449,7 +453,7 @@ const LEADS_PER_PAGE = 10;
 function renderLeads() {
   renderLeadsStats();
   const statuses = ['all','not_escalated','outreach_wapp','outreach_call','prospecting','payment','followup','converted'];
-  const statusLabels = { all:'All', not_escalated:'Not Escalated', outreach_wapp:'Wapp', outreach_call:'Call', prospecting:'Prospecting', payment:'Payment', followup:'Follow-up', converted:'Converted' };
+  const statusLabels = { all:'All', not_escalated:'Not Escalated', outreach_wapp:'Wapp', outreach_call:'Call', prospecting:'Unresponsive', payment:'Payment', followup:'Follow-up', converted:'Converted' };
   const filterEl = document.getElementById('leads-filter');
   filterEl.innerHTML = statuses.map(s => `<button class="filter-btn ${leadsFilter === s ? 'active' : ''}" onclick="setLeadsFilter('${s}')">${statusLabels[s]}</button>`).join('');
 
@@ -470,10 +474,10 @@ function renderLeads() {
   const webIcons = { yes: '✅', no: '❌', not_working: '⚠️' };
 
   tb.innerHTML = paginated.map(l => `
-    <tr oncontextmenu="openStatusMenu(event,'${l.id}')" style="cursor:context-menu;${getAgingDays(l) >= 5 ? 'background:rgba(245,158,11,0.06);outline:1px solid rgba(245,158,11,0.25);' : ''}">
+    <tr oncontextmenu="openStatusMenu(event,'${l.id}')" style="cursor:context-menu;${getAgingDays(l) >= 5 && l.status !== 'converted' ? 'background:rgba(245,158,11,0.06);outline:1px solid rgba(245,158,11,0.25);' : ''}">
       <td class="td-name">
 <div>
-          ${getAgingDays(l) >= 5 ? `<span title="${getAgingDays(l)} days in this status" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(245,158,11,0.12);color:#f59e0b;white-space:nowrap;flex-shrink:0">⏳ ${getAgingDays(l)}d</span>` : ''}
+          ${getAgingDays(l) >= 5 && l.status !== 'converted' ? `<span title="${getAgingDays(l)} days in this status" style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(245,158,11,0.12);color:#f59e0b;white-space:nowrap;flex-shrink:0">⏳ ${getAgingDays(l)}d</span>` : ''}
           ${l.note ? `<span style="position:relative;display:inline-flex;align-items:center;gap:6px">
             <span class="note-icon-wrap" style="position:relative;display:inline-flex">
               <svg fill="none" stroke="var(--accent)" viewBox="0 0 24 24" style="width:13px;height:13px;flex-shrink:0;cursor:pointer" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -487,7 +491,15 @@ function renderLeads() {
         </div>
       </td>
       <td>
-        <span class="status-pill ${statusClass(l.status)}">${statusLabel(l.status)}</span>
+     <span class="status-pill ${statusClass(l.status)}">
+  ${l.status === 'followup' ? 
+    (l.followupType === 'pitching' ? '🎯 Pitching Call' :
+l.followupType === 'prospect' ? '🔍 Prospect Call' :
+l.followupType === 'gbp' ? '📍 GBP Report' :
+l.followupType === 'nudge' ? '🔔 Nudge' :
+'📅 Follow-up') 
+    : statusLabel(l.status)}
+</span>
         ${l.status === 'followup' && l.followupNote ? `
           <span style="position:relative;display:inline-flex;align-items:center;margin-left:5px;vertical-align:middle" class="note-icon-wrap">
             <svg fill="none" stroke="var(--accent)" viewBox="0 0 24 24" style="width:13px;height:13px;cursor:pointer;flex-shrink:0" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -578,9 +590,9 @@ function renderSuspended() {
   const start = (suspendedPage - 1) * SUSPENDED_PER_PAGE;
   const paginated = suspended.slice(start, start + SUSPENDED_PER_PAGE);
 
-  tb.innerHTML = paginated.map(l => `
-    <tr>
-      <td class="td-name">${esc(l.name)}</td>
+ tb.innerHTML = paginated.map(l => `
+    <tr style="background:rgba(239,68,68,0.04);outline:1px solid rgba(239,68,68,0.15);">
+      <td class="td-name" style="color:var(--red)">${esc(l.name)}</td>
       <td>${l.phone || '—'}</td>
       <td>${l.city || '—'}</td>
       <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.note || '—'}</td>
@@ -639,7 +651,7 @@ function statusClass(s) {
 }
 
 function statusLabel(s) {
-  const m = { not_escalated:'Not Escalated', outreach_wapp:'Outreach (Wapp)', outreach_call:'Outreach (Call)', prospecting:'Prospecting', payment:'Payment', followup:'Follow-up', converted:'Converted', suspended:'Suspended' };
+  const m = { not_escalated:'Not Escalated', outreach_wapp:'Outreach (Wapp)', outreach_call:'Outreach (Call)', prospecting:'Unresponsive', payment:'Payment', followup:'Follow-up', converted:'Converted', suspended:'Suspended' };
   return m[s] || s;
 }
 
@@ -1194,6 +1206,12 @@ function renderContacts() {
       ${c.note ? `<div class="contact-city" style="margin-top:4px">${esc(c.note)}</div>` : ''}
       <div class="contact-actions">
         ${c.phone ? `<a href="tel:${esc(c.phone)}" class="icon-link gbp"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6z"/></svg></a>` : ''}
+        <button onclick="scheduleCallFromContact('${c.id}')" class="icon-link gbp" title="Schedule Call">
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px" stroke-width="1.8">
+    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6z"/>
+    <line x1="18" y1="2" x2="18" y2="8"/><line x1="15" y1="5" x2="21" y2="5"/>
+  </svg>
+    </button>
         ${c.wapp ? `<a href="https://wa.me/${c.wapp.replace(/\D/g,'')}" target="_blank" class="icon-link wapp">${wappSVG()}</a>` : ''}
         <button class="icon-btn" onclick="deleteContact('${c.id}')" style="color:var(--red)">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
@@ -1399,7 +1417,7 @@ function renderLeadsPie() {
     { key: 'not_escalated', label: 'Not Escalated',   count: leads.filter(l => l.status === 'not_escalated').length,  color: '#94a3b8', bg: '#94a3b814' },
     { key: 'outreach_wapp', label: 'Outreach (Wapp)', count: leads.filter(l => l.status === 'outreach_wapp').length,   color: '#22c55e', bg: '#22c55e14' },
     { key: 'outreach_call', label: 'Outreach (Call)', count: leads.filter(l => l.status === 'outreach_call').length,   color: '#3b82f6', bg: '#3b82f614' },
-    { key: 'prospecting',   label: 'Prospecting',     count: leads.filter(l => l.status === 'prospecting').length,     color: '#f59e0b', bg: '#f59e0b14' },
+    { key: 'prospecting',   label: 'Unresponsive',     count: leads.filter(l => l.status === 'unresponsive').length,     color: '#f59e0b', bg: '#f59e0b14' },
     { key: 'payment',       label: 'Payment',         count: leads.filter(l => l.status === 'payment').length,         color: '#8b5cf6', bg: '#8b5cf614' },
     { key: 'followup',      label: 'Follow-up',       count: leads.filter(l => l.status === 'followup').length,        color: '#06b6d4', bg: '#06b6d414' },
     { key: 'converted',     label: 'Converted',       count: leads.filter(l => l.status === 'converted').length,       color: '#4ade80', bg: '#4ade8014' },
@@ -1747,7 +1765,7 @@ const statusMenuOptions = [
   { value: 'not_escalated', label: 'Not Escalated',   color: '#94a3b8' },
   { value: 'outreach_wapp', label: 'Outreach (Wapp)', color: '#22c55e' },
   { value: 'outreach_call', label: 'Outreach (Call)', color: '#3b82f6' },
-  { value: 'prospecting',   label: 'Prospecting',     color: '#f59e0b' },
+  { value: 'prospecting',   label: 'Unresponsive',     color: '#f59e0b' },
   { value: 'payment',       label: 'Payment',         color: '#8b5cf6' },
   { value: 'followup',      label: 'Follow-up',       color: '#06b6d4' },
   { value: 'converted',     label: 'Converted',       color: '#4ade80' },
@@ -1860,11 +1878,17 @@ let _fqOldStatus = null;
 
 function openFollowupQuick(leadId, oldStatus) {
   _fqLeadId = leadId; _fqOldStatus = oldStatus;
+  _fqType = null;
   document.getElementById('fq-date').value = todayISO();
   document.getElementById('fq-date').min = todayISO();
   document.getElementById('fq-time').value = '';
   document.getElementById('fq-note').value = '';
   document.getElementById('fq-err').textContent = '';
+  document.getElementById('fq-amount-row').style.display = 'none';
+  document.getElementById('fq-amount').value = '';
+  // reset type selection
+  document.querySelectorAll('.fq-type-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('fq-fields').style.display = 'none';
   openModal('modal-followup-quick');
 }
 
@@ -1881,18 +1905,69 @@ async function confirmFollowupQuick() {
   const time = document.getElementById('fq-time').value;
   const note = document.getElementById('fq-note').value.trim();
   const err = document.getElementById('fq-err');
-  if (!date) { err.textContent = '⚠️ Date is required.'; return; }
+if (!_fqType) { err.textContent = '⚠️ Please select a follow-up type.'; return; }
+if (_fqType === 'call' && !_fqCallSubtype) { err.textContent = '⚠️ Please select a call type.'; return; }
+if (!date) { err.textContent = '⚠️ Date is required.'; return; }
   if (!time) { err.textContent = '⚠️ Time is required.'; return; }
-  if (!note) { err.textContent = '⚠️ Note is required.'; return; }
 
   const lead = state.leads.find(l => l.id === _fqLeadId);
   if (!lead) { closeModal('modal-followup-quick'); return; }
 
   const oldStatus = _fqOldStatus;
-  lead.status = 'followup'; lead.followupDate = date; lead.followupTime = time; lead.followupNote = note;
+lead.status = _fqType === 'payment' ? 'payment' : 'followup';
+lead.followupDate = date;
+lead.followupTime = time;
+lead.followupNote = note;
+lead.followupType = _fqType === 'call' ? _fqCallSubtype : _fqType;
+  if (_fqType === 'payment') {
+    lead.followupAmount = parseFloat(document.getElementById('fq-amount').value) || 0;
+  }
+
   closeModal('modal-followup-quick');
 
   const { supaUrl, supaKey } = state.settings;
+
+  // Auto-create call for Call type
+  if (_fqType === 'call') {
+    const call = {
+      id: uid(), name: lead.name,
+      phone: lead.phone || lead.wapp || '',
+      time, note, date, done: false,
+      reminder_mins: 15,
+      createdAt: nowISOString()
+    };
+    state.calls.push(call);
+    if (supaKey) {
+      fetch(`${supaUrl}/rest/v1/calls`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ id: call.id, name: call.name, phone: call.phone, time, note, date, done: false, created_at: call.createdAt, reminder_mins: 15, user_email: state.user?.email || '' })
+      }).catch(e => console.error('Call auto-create error:', e));
+    }
+  }
+
+  // Auto-create task for GBP type
+  if (_fqType === 'gbp') {
+    const task = {
+      id: uid(),
+      title: `GBP Report - ${lead.name}`,
+      date,
+      priority: 'high',
+      note: `GBP report due by ${time}${note ? ' · ' + note : ''}`,
+      done: false,
+      createdAt: nowISOString()
+    };
+    state.tasks.push(task);
+    if (supaKey) {
+      fetch(`${supaUrl}/rest/v1/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ id: task.id, title: task.title, date: task.date, priority: 'high', note: task.note, done: false, created_at: task.createdAt, user_email: state.user?.email || '' })
+      }).catch(e => console.error('Task auto-create error:', e));
+    }
+  }
+
+  // Escalation log
   if (oldStatus === 'not_escalated' && supaKey) {
     fetch(`${supaUrl}/rest/v1/lead_escalations`, {
       method: 'POST',
@@ -1906,14 +1981,52 @@ async function confirmFollowupQuick() {
       await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ status: 'followup', followup_date: date, followup_note: note, followup_time: time, sale_amount: lead.saleAmount || 0 })
+      body: JSON.stringify({
+      status: _fqType === 'payment' ? 'payment' : 'followup',
+          followup_date: date,
+          followup_note: note,
+          followup_time: time,
+          followup_type: _fqType,
+          followup_amount: lead.followupAmount || null,
+          sale_amount: lead.saleAmount || 0
+        })
       });
     } catch(e) { console.error('Followup save error:', e); }
   }
 
   save(); renderLeads(); renderSuspended(); renderHome();
-  toast(`📅 Follow-up set for ${date} at ${time}`);
-  _fqLeadId = null; _fqOldStatus = null;
+
+  const typeLabels = { call: '📞 Call', payment: '💳 Payment', gbp: '📍 GBP Report' };
+  toast(`${typeLabels[_fqType]} follow-up set for ${date} at ${time}`);
+  _fqLeadId = null; _fqOldStatus = null; _fqType = null; _fqCallSubtype = null;
+}
+
+//added selectFqType 
+
+let _fqType = null;
+let _fqCallSubtype = null;
+
+function selectFqType(type) {
+  _fqType = type;
+  document.querySelectorAll('.fq-type-btn').forEach(b => {
+    const isSelected = b.dataset.type === type;
+    b.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border2)';
+    b.style.background = isSelected ? 'var(--accent-soft)' : 'var(--surface2)';
+    b.style.color = isSelected ? 'var(--accent)' : 'var(--text2)';
+  });
+document.getElementById('fq-fields').style.display = '';
+document.getElementById('fq-amount-row').style.display = type === 'payment' ? '' : 'none';
+document.getElementById('fq-call-subtype-row').style.display = type === 'call' ? '' : 'none';
+}
+
+function selectFqSubtype(sub) {
+  _fqCallSubtype = sub;
+  document.querySelectorAll('.fq-subtype-btn').forEach(b => {
+    const isSelected = b.dataset.sub === sub;
+    b.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border2)';
+    b.style.background = isSelected ? 'var(--accent-soft)' : 'var(--surface2)';
+    b.style.color = isSelected ? 'var(--accent)' : 'var(--text2)';
+  });
 }
 
 // ── EVENT LISTENERS ──
@@ -2251,13 +2364,13 @@ function renderActionPage() {
           <div style="display:flex;align-items:center;gap:8px">
             <div style="width:6px;height:36px;border-radius:3px;flex-shrink:0;background:${isCritical ? '#ef4444' : '#f59e0b'}"></div>
             <div>
-              <div style="font-weight:600;color:var(--text)">${esc(l.name)}</div>
+              <div style="font-weight:600;color:var(--text)">${esc(l.name)}${l.timing ? `<span style="font-size:11px;color:var(--accent);font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px">⏱ ${esc(l.timing)}</span>` : ''}</div>
               ${l.note ? `<div style="font-size:11px;color:var(--text3);margin-top:2px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.note)}</div>` : ''}
             </div>
           </div>
         </td>
         <td><span class="status-pill ${statusClass(l.status)}">${statusLabel(l.status)}</span></td>
-        <td><span style="font-family:var(--font-head);font-size:15px;font-weight:800;padding:4px 10px;border-radius:8px;${badgeColor}">${badgeIcon} ${days}d</span></td>
+        <td><span style="font-size:12px;font-weight:700;padding:3px 8px;border-radius:20px;${badgeColor}">${badgeIcon} ${days}d</span></td>
         <td>${l.phone ? `<a href="tel:${esc(l.phone)}" style="color:var(--text2);text-decoration:none">${esc(l.phone)}</a>` : '—'}</td>
         <td>${l.city ? esc(l.city) : '—'}</td>
         <td>
@@ -2303,7 +2416,7 @@ function renderFunnelPage() {
     { key: 'not_escalated', label: 'Not Escalated', color: '#94a3b8', icon: '📋' },
     { key: 'outreach_wapp', label: 'Outreach (Wapp)', color: '#22c55e', icon: '💬' },
     { key: 'outreach_call', label: 'Outreach (Call)', color: '#3b82f6', icon: '📞' },
-    { key: 'prospecting',   label: 'Prospecting',    color: '#f59e0b', icon: '🔍' },
+    { key: 'unresponsive',   label: 'Unresponsive',    color: '#ffb300', icon: '🔍' },
     { key: 'followup',      label: 'Follow-up',      color: '#06b6d4', icon: '📅' },
     { key: 'payment',       label: 'Payment',        color: '#8b5cf6', icon: '💳' },
     { key: 'converted',     label: 'Converted',      color: '#22c55e', icon: '✅' },
@@ -2335,8 +2448,12 @@ function renderFunnelPage() {
   counts.forEach((s, i) => {
     const barPct = maxCount > 0 ? Math.max(4, Math.round((s.count / maxCount) * 100)) : 4;
     const funnelWidth = Math.max(30, Math.round(100 - (i * (70 / counts.length))));
-    const prevCount = i > 0 ? counts[i - 1].count : null;
-    const dropoff = prevCount !== null && prevCount > 0 ? Math.round(((prevCount - s.count) / prevCount) * 100) : null;
+// find last non-zero previous stage
+let prevCount = null;
+for (let j = i - 1; j >= 0; j--) {
+  if (counts[j].count > 0) { prevCount = counts[j].count; break; }
+}
+const dropoff = prevCount !== null && prevCount > 0 ? Math.round(((prevCount - s.count) / prevCount) * 100) : null;
     const dropoffColor = dropoff > 60 ? '#ef4444' : dropoff > 30 ? '#f59e0b' : '#22c55e';
     html += `
       <div style="display:flex;align-items:center;gap:16px">
@@ -2587,6 +2704,17 @@ function playTringSound() {
     beep(880, 0, 0.15); beep(660, 0.05, 0.15);
     beep(880, 0.22, 0.15); beep(660, 0.27, 0.15);
   } catch(e) { /* audio not supported */ }
+}
+//schedule call for contacts
+
+function scheduleCallFromContact(id) {
+  const c = state.contacts.find(x => x.id === id);
+  if (!c) return;
+  openCallModal();
+  setTimeout(() => {
+    document.getElementById('call-name').value = c.name || '';
+    document.getElementById('call-phone').value = c.phone || c.wapp || '';
+  }, 50);
 }
 
 setInterval(checkCallReminders, 15000);
