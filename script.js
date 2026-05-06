@@ -1,6 +1,20 @@
 // ── STATE ──
 const DB_KEY = 'nexaflow_v1';
 const APP_LOGO = "favicon.png";
+
+function sendTelegramNotification(message) {
+  const { supaUrl, supaKey } = state.settings;
+  fetch(`${supaUrl}/functions/v1/send-telegram`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + supaKey
+    },
+    body: JSON.stringify({ message })
+  }).catch(e => console.log('Telegram error:', e));
+}
+
+
 let state = {
   user: null,
   leads: [],
