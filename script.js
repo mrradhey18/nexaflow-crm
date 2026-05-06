@@ -2505,6 +2505,15 @@ function selectReminder(mins) {
   });
 }
 
+// ── AUTO REFRESH ──
+function startAutoRefresh() {
+  setInterval(async () => {
+    if (!state.user) return;
+    await fetchAllFromSupabase();
+    renderHome(); renderLeads(); renderLeadsStats(); renderSuspended(); renderContacts(); renderSales();
+  }, 180000);
+}
+
 // ── CALL REMINDER POPUP ──
 function checkCallReminders() {
   if (!state.user) return;
