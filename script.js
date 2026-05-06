@@ -820,15 +820,17 @@ async function saveLead(createAnother = false) {
     });
   }
 
-  const localLead = {
+const localLead = {
     id: lead.id, name: lead.name, city: lead.city, phone: lead.phone, wapp: lead.wapp,
     website: lead.website, report: lead.report, gbpRank: lead.gbp_rank, gbpUrl: lead.gbp_url,
     reviews: lead.reviews, timing: lead.timing || '', status: lead.status, saleAmount: lead.sale_amount,
     convertedAt: lead.converted_at, createdAt: lead.created_at,
     followupDate: lead.followup_date || '', followupNote: lead.followup_note || '',
     followupTime: lead.followup_time || '', userEmail: lead.user_email,
-    timing: lead.timing || ''
-  };
+    timing: lead.timing || '',
+    followupType: lead.followup_type || '',        // ← ADD THIS
+    statusChangedAt: lead.status_changed_at || lead.created_at,  // ← ADD THIS
+};
 
   if (editId) {
     const idx = state.leads.findIndex(l => l.id === editId);
@@ -1986,7 +1988,7 @@ lead.followupType = _fqType === 'call' ? _fqCallSubtype : _fqType;
           followup_date: date,
           followup_note: note,
           followup_time: time,
-          followup_type: _fqType,
+          followup_type: _fqType === 'call' ? _fqCallSubtype : _fqType,
           followup_amount: lead.followupAmount || null,
           sale_amount: lead.saleAmount || 0
         })
