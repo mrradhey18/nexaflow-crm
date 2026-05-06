@@ -1,24 +1,6 @@
 // ── STATE ──
 const DB_KEY = 'nexaflow_v1';
 const APP_LOGO = "favicon.png";
-// ── TELEGRAM CONFIG ──
-const TELEGRAM_TOKEN = 'diLXk';
-const TELEGRAM_CHAT_ID = '6585181761';
-
-function sendTelegramNotification(message) {
-  if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
-  fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: TELEGRAM_CHAT_ID,
-      text: message,
-      parse_mode: 'HTML'
-    })
-  }).catch(e => console.log('Telegram error:', e));
-}
-
-
 let state = {
   user: null,
   leads: [],
