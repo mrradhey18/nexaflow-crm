@@ -602,7 +602,6 @@
   </div>
 </div>
 
-<!-- ── MODALS ── -->
 
 <!-- LEAD MODAL -->
 <div class="modal-overlay" id="modal-lead">
@@ -619,7 +618,7 @@
       <label class="radio-option selected"><input type="radio" name="lead-status" value="not_escalated" checked> Not Escalated</label>
       <label class="radio-option"><input type="radio" name="lead-status" value="outreach_wapp"> Outreach (Wapp)</label>
       <label class="radio-option"><input type="radio" name="lead-status" value="outreach_call"> Outreach (Call)</label>
-      <label class="radio-option"><input type="radio" name="lead-status" value="prospecting"> Prospecting</label>
+      <label class="radio-option"><input type="radio" name="lead-status" value="prospecting"> Unresponsive</label>
       <label class="radio-option"><input type="radio" name="lead-status" value="payment"> Payment</label>
       <label class="radio-option"><input type="radio" name="lead-status" value="followup"> Follow-up</label>
       <label class="radio-option"><input type="radio" name="lead-status" value="converted"> Converted</label>
@@ -944,32 +943,71 @@
 <!-- FOLLOWUP QUICK MODAL -->
 <div class="modal-overlay" id="modal-followup-quick">
   <div class="modal" style="max-width:420px">
-    <div class="modal-title">
-      📅 Set Follow-up
-      <button class="modal-close" onclick="closeModal('modal-followup-quick')">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
+    <div class="modal-header">
+      <div class="modal-title">📅 Set Follow-up</div>
+      <button class="modal-close" onclick="cancelFollowupQuick()">×</button>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Date *</label>
-        <input type="date" id="fq-date" min="">
+    <div class="modal-body">
+
+      <div style="margin-bottom:16px">
+        <label class="form-label">Follow-up Type</label>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="fq-type-btn" data-type="call" onclick="selectFqType('call')"
+            style="flex:1;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s">
+            📞 Call
+          </button>
+          <button class="fq-type-btn" data-type="payment" onclick="selectFqType('payment')"
+            style="flex:1;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s">
+            💳 Payment
+          </button>
+          <button class="fq-type-btn" data-type="gbp" onclick="selectFqType('gbp')"
+            style="flex:1;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s">
+            📍 GBP Report
+          </button>
+          <button class="fq-type-btn" data-type="nudge" onclick="selectFqType('nudge')"
+  style="flex:1;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s">
+  🔔 Nudge
+</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Time *</label>
-        <input type="time" id="fq-time">
+
+      <div id="fq-fields" style="display:none">
+        <div class="form-row">
+          <label class="form-label">Date</label>
+          <input type="date" id="fq-date" class="form-input">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Time</label>
+          <input type="time" id="fq-time" class="form-input">
+        </div>
+        <div class="form-row" id="fq-amount-row" style="display:none">
+          <label class="form-label">Amount Due (₹)</label>
+          <input type="number" id="fq-amount" class="form-input" placeholder="Enter amount due">
+        </div>
+        <div class="form-row" id="fq-call-subtype-row" style="display:none">
+  <label class="form-label">Call Type</label>
+  <div style="display:flex;gap:8px;margin-top:6px">
+    <button class="fq-subtype-btn" data-sub="pitching" onclick="selectFqSubtype('pitching')"
+      style="flex:1;padding:8px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s">
+      🎯 Pitching Call
+    </button>
+    <button class="fq-subtype-btn" data-sub="prospect" onclick="selectFqSubtype('prospect')"
+      style="flex:1;padding:8px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s">
+      🔍 Prospect Call
+    </button>
+  </div>
+</div>
+        <div class="form-row">
+          <label class="form-label">Note</label>
+          <textarea id="fq-note" class="form-input" rows="2" placeholder="Add a note..."></textarea>
+        </div>
+        <div id="fq-err" style="color:var(--red);font-size:12px;margin-top:4px"></div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="btn btn-ghost" onclick="cancelFollowupQuick()" style="flex:1">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmFollowupQuick()" style="flex:1">Confirm</button>
+        </div>
       </div>
-    </div>
-    <div class="form-row full">
-      <div class="form-group">
-        <label>Follow-up Note *</label>
-        <textarea id="fq-note" placeholder="What's the follow-up about?" style="min-height:80px"></textarea>
-      </div>
-    </div>
-    <div class="err-msg" id="fq-err" style="text-align:left;margin-bottom:8px"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="cancelFollowupQuick()">Cancel</button>
-      <button class="btn btn-primary" onclick="confirmFollowupQuick()">Confirm Follow-up</button>
+
     </div>
   </div>
 </div>
