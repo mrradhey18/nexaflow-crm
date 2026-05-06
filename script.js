@@ -4,7 +4,7 @@ const APP_LOGO = "favicon.png";
 
 function sendTelegramNotification(message) {
   const { supaUrl, supaKey } = state.settings;
-  fetch(`${supaUrl}/functions/v1/send-telegram`, {
+  fetch(`${supaUrl}/functions/v1/telegram-notify`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
