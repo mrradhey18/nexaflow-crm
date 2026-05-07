@@ -1906,16 +1906,10 @@ async function applyQuickStatus(newStatus) {
   }
 
   if (newStatus === 'converted' && oldStatus !== 'converted') {
-    let amount = null;
-    while (true) {
-      const input = prompt('💰 Enter sale amount (₹) — required to convert:');
-      if (input === null) { lead.status = oldStatus; closeStatusMenu(); toast('Conversion cancelled'); return; }
-      const parsed = parseFloat(input);
-      if (!input.trim()) { alert('⚠️ Sale amount cannot be empty. Please enter a value.'); continue; }
-      if (isNaN(parsed) || parsed <= 0) { alert('⚠️ Please enter a valid amount greater than 0.'); continue; }
-      amount = parsed; break;
-    }
-    lead.saleAmount = amount; lead.convertedAt = nowISOString();
+    lead.status = oldStatus; // revert until confirmed
+    closeStatusMenu();
+    openConvertModal(lead.id);
+    return;
   }
 
   if (newStatus === 'followup') { closeStatusMenu(); openFollowupQuick(lead.id, lead.status); return; }
@@ -2509,19 +2503,24 @@ function renderFunnelPage() {
   const leads = state.leads || [];
   const total = leads.length;
 
+const escalated = leads.filter(l => l.status !== 'not_escalated' && l.status !== 'suspended').length;
+  const responsive = leads.filter(l =>
+    (l.status === 'outreach_wapp' || l.status === 'outreach_call') 
+  ).length;
+
   const stages = [
-    { key: 'not_escalated', label: 'Not Escalated', color: '#94a3b8', icon: '📋' },
-    { key: 'outreach_wapp', label: 'Outreach (Wapp)', color: '#22c55e', icon: '💬' },
-    { key: 'outreach_call', label: 'Outreach (Call)', color: '#3b82f6', icon: '📞' },
-    { key: 'unresponsive',   label: 'Unresponsive',    color: '#ffb300', icon: '🔍' },
-    { key: 'followup',      label: 'Follow-up',      color: '#06b6d4', icon: '📅' },
-    { key: 'payment',       label: 'Payment',        color: '#8b5cf6', icon: '💳' },
-    { key: 'converted',     label: 'Converted',      color: '#22c55e', icon: '✅' },
+    { key: '_total', label: 'Total Leads', color: '#94a3b8', icon: '📋', count: total },
+    { key: '_escalated',     label: 'Escalated',      color: '#3b82f6', icon: '📤', count: escalated },
+    { key: '_responsive',    label: 'Responsive',     color: '#22c55e', icon: '💬', count: responsive }, 
+    { key: 'followup',       label: 'Follow-up',      color: '#06b6d4', icon: '📅', count: leads.filter(l => l.status === 'followup').length },
+    { key: 'payment',        label: 'Payment',        color: '#8b5cf6', icon: '💳', count: leads.filter(l => l.status === 'payment').length },
+    { key: 'converted',      label: 'Converted',      color: '#22c55e', icon: '✅', count: leads.filter(l => l.status === 'converted').length },
   ];
 
-  const counts = stages.map(s => ({ ...s, count: leads.filter(l => l.status === s.key).length }));
+  const counts = stages; // already have count pre-computed
+
   const maxCount = Math.max(...counts.map(s => s.count), 1);
-  const converted = counts.find(s => s.key === 'converted')?.count || 0;
+  const converted = leads.filter(l => l.status === 'converted').length;
   const convRate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0.0';
   const active = leads.filter(l => l.status !== 'suspended' && l.status !== 'converted').length;
 
@@ -2817,6 +2816,86 @@ function scheduleCallFromContact(id) {
     document.getElementById('call-name').value = c.name || '';
     document.getElementById('call-phone').value = c.phone || c.wapp || '';
   }, 50);
+}
+
+let _convertLeadId = null;
+let _convertAmount = null;
+
+function openConvertModal(leadId) {
+  _convertLeadId = leadId;
+  _convertAmount = null;
+  const lead = state.leads.find(l => l.id === leadId);
+  document.getElementById('convert-lead-name').textContent = lead?.name || '';
+  document.getElementById('convert-date').value = todayISO();   
+  document.getElementById('convert-txn').value = '';            
+  document.querySelectorAll('.convert-plan-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('convert-custom-row').style.display = 'none';
+  document.getElementById('convert-custom-amount').value = '';
+  document.getElementById('convert-selected-display').style.display = 'none';
+  document.getElementById('convert-err').textContent = '';
+  openModal('modal-convert');
+}
+
+function selectPlan(amount) {
+  _convertAmount = amount;
+  document.querySelectorAll('.convert-plan-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.amount == amount || (amount === 'custom' && c.dataset.amount === 'custom'));
+  });
+  const customRow = document.getElementById('convert-custom-row');
+  const display = document.getElementById('convert-selected-display');
+  if (amount === 'custom') {
+    customRow.style.display = '';
+    display.style.display = 'none';
+    document.getElementById('convert-custom-amount').focus();
+  } else {
+    customRow.style.display = 'none';
+    display.style.display = '';
+    display.textContent = `✓ ₹${fmtNum(amount)} selected`;
+  }
+  document.getElementById('convert-err').textContent = '';
+}
+
+async function confirmConvert() {
+  let amount = _convertAmount;
+  if (amount === 'custom') {
+    amount = parseFloat(document.getElementById('convert-custom-amount').value);
+    if (!amount || amount <= 0) { document.getElementById('convert-err').textContent = '⚠️ Enter a valid custom amount.'; return; }
+  }
+  if (!amount) { document.getElementById('convert-err').textContent = '⚠️ Please select a plan.'; return; }
+
+  closeModal('modal-convert');
+
+  const lead = state.leads.find(l => l.id === _convertLeadId);
+  if (!lead) return;
+  const oldStatus = lead.status;
+  lead.status = 'converted';
+  lead.saleAmount = amount;
+  lead.convertedAt = nowISOString();
+  lead.statusChangedAt = nowISOString();
+
+  const { supaUrl, supaKey } = state.settings;
+  try {
+    if (supaKey) {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status: 'converted', sale_amount: amount, converted_at: lead.convertedAt, status_changed_at: lead.statusChangedAt })
+      });
+      const txn = document.getElementById('convert-txn').value.trim();
+      const sale = { id: uid(), lead_id: lead.id, lead_name: lead.name, amount, transaction_id: txn, date: todayISO(), note: 'Auto-added on conversion', created_at: nowISOString(), user_email: state.user?.email || '' };
+      const saleRes = await fetch(`${supaUrl}/rest/v1/sales`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=representation' },
+        body: JSON.stringify(sale)
+      });
+      if (saleRes.ok) { const rows = await saleRes.json(); state.sales = state.sales || []; state.sales.push(rows[0] || sale); }
+    }
+  } catch(e) { console.error('Convert error:', e); }
+
+  save(); syncAndRender();
+  toast(`✅ ${lead.name} converted! ₹${fmtNum(amount)} added`);
+  triggerCoinAnimation();
+  _convertLeadId = null; _convertAmount = null;
 }
 
 setInterval(checkCallReminders, 15000);
