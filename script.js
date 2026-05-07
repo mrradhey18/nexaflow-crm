@@ -839,11 +839,7 @@ const localLead = {
     state.leads.push(localLead);
   }
 
-  save();
-  renderLeads();
-  renderSuspended();
-  renderHome();
-  renderLeadsStats();
+ save(); syncAndRender();
 
   if (createAnother) {
     document.getElementById('lead-edit-id').value = '';
@@ -879,7 +875,7 @@ async function deleteLead(id) {
   }
   state.leads = state.leads.filter(l => l.id !== id);
   suspendedPage = 1;
-  save(); renderLeads(); renderSuspended(); renderHome();
+  save(); syncAndRender();
   toast('Lead deleted');
 }
 
@@ -910,9 +906,7 @@ async function restoreLead(id) {
   }
 
   suspendedPage = 1;
-  save();
-  renderSuspended();
-  renderLeads();
+  save(); syncAndRender();
   toast('Lead restored');
 }
 
@@ -1565,6 +1559,97 @@ function toggleFollowupPopup() {
 
 function closeFollowupPopup() { document.getElementById('followup-popup').style.display = 'none'; }
 
+async function completeFollowup(leadId) {
+  const lead = state.leads.find(l => l.id === leadId);
+  if (!lead) return;
+
+  const isPayment = lead.followupType === 'payment';
+  let amount = 0;
+
+  if (isPayment) {
+    while (true) {
+      const input = prompt(`💳 Payment received from "${lead.name}"?\n\nEnter amount (₹):`);
+      if (input === null) return;
+      const parsed = parseFloat(input);
+      if (isNaN(parsed) || parsed < 0) { alert('Enter a valid amount.'); continue; }
+      amount = parsed; break;
+    }
+  }
+
+  lead.status = isPayment && amount > 0 ? 'converted' : 'not_escalated';
+  lead.statusChangedAt = nowISOString();
+  lead.followupDate = '';
+  lead.followupNote = '';
+  lead.followupTime = '';
+  lead.followupType = '';
+  lead.followupAmount = 0;
+  if (isPayment && amount > 0) { lead.saleAmount = amount; lead.convertedAt = nowISOString(); }
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          status: lead.status, status_changed_at: lead.statusChangedAt,
+          followup_date: null, followup_note: null, followup_time: null, followup_type: null, followup_amount: null,
+          sale_amount: lead.saleAmount || 0, converted_at: lead.convertedAt || null
+        })
+      });
+      if (isPayment && amount > 0) {
+        const sale = { id: uid(), lead_id: lead.id, lead_name: lead.name, amount, transaction_id: '', date: todayISO(), note: 'Payment follow-up completed', created_at: nowISOString(), user_email: state.user?.email || '' };
+        const saleRes = await fetch(`${supaUrl}/rest/v1/sales`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=representation' },
+          body: JSON.stringify(sale)
+        });
+        if (saleRes.ok) { const rows = await saleRes.json(); state.sales = state.sales || []; state.sales.push(rows[0] || sale); }
+      }
+    } catch(e) { console.error('Complete followup error:', e); }
+  }
+
+  save(); closeFollowupPopup(); syncAndRender();
+  toast(isPayment && amount > 0 ? `✅ ${lead.name} converted! ₹${fmtNum(amount)} added` : `✅ ${lead.name} follow-up marked complete`);
+  if (isPayment && amount > 0) triggerCoinAnimation();
+}
+
+async function dismissFollowup(leadId) {
+  const lead = state.leads.find(l => l.id === leadId);
+  if (!lead) return;
+  lead.followupDate = '';
+  lead.followupNote = '';
+  lead.followupTime = '';
+  lead.followupType = '';
+  lead.followupAmount = 0;
+  lead.status = 'not_escalated';
+  lead.statusChangedAt = nowISOString();
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          status: 'not_escalated',
+          status_changed_at: lead.statusChangedAt,
+          followup_date: null, followup_note: null,
+          followup_time: null, followup_type: null, followup_amount: null
+        })
+      });
+    } catch(e) { console.error('Dismiss followup error:', e); }
+  }
+  save(); closeFollowupPopup(); syncAndRender();
+  toast('Follow-up dismissed');
+}
+
+function postponeFollowup(leadId) {
+  closeFollowupPopup();
+  // Re-open the followup quick modal keeping current status as 'followup'
+  openFollowupQuick(leadId, 'followup');
+}
+
 //templates
 
 function getFollowupTemplate(note) {
@@ -1631,14 +1716,22 @@ function renderFollowupPopup() {
       <div style="padding:12px;border-radius:10px;border:1px solid ${borderColor};background:${bg};margin-bottom:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(l.name)}</div>
-          <span style="font-size:11px;font-weight:600">${label}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;font-weight:600">${label}</span>
+            <button onclick="dismissFollowup('${l.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;line-height:1;padding:0;opacity:0.7" title="Remove follow-up">×</button>
+          </div>
         </div>
         <div style="font-size:12px;color:var(--text3);margin-bottom:8px">📅 ${dateDisplay}${l.followupTime ? ' · ⏰ ' + l.followupTime : ''}${l.city ? ' · 📍 ' + esc(l.city) : ''}</div>
         ${l.followupNote ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px;padding:6px 8px;background:var(--surface3);border-radius:6px">📝 ${esc(l.followupNote)}</div>` : ''}
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button onclick="dismissFollowup('${l.id}')" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:0 2px" title="Remove follow-up">×</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
 ${l.wapp ? `<a href="https://wa.me/${l.wapp.replace(/\D/g,'')}?text=${encodeURIComponent(getFollowupTemplate(l.followupNote))}" target="_blank" class="btn btn-success" style="padding:4px 10px;font-size:11.5px">WhatsApp</a>` : ''}
-        ${l.phone ? `<a href="tel:${esc(l.phone)}" class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">Call</a>` : ''}
+          ${l.phone ? `<a href="tel:${esc(l.phone)}" class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">Call</a>` : ''}
           <button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px" onclick="closeFollowupPopup();editLead('${l.id}')">Edit</button>
+          <button class="btn btn-primary" style="padding:4px 10px;font-size:11.5px;background:var(--green)" onclick="completeFollowup('${l.id}')">✓ Done</button>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px;border-color:var(--amber);color:var(--amber)" onclick="postponeFollowup('${l.id}')">⏱ Postpone</button>
         </div>
       </div>`;
   }).join('');
@@ -1864,7 +1957,7 @@ async function applyQuickStatus(newStatus) {
     }
   } catch(e) { console.error('Quick status error:', e); toast('Error saving status'); }
 
-  save(); renderLeads(); renderSuspended(); renderSales(); renderHome();
+  save(); syncAndRender();
 }
 
 function closeStatusMenu() {
@@ -1917,10 +2010,11 @@ if (!date) { err.textContent = '⚠️ Date is required.'; return; }
 
   const oldStatus = _fqOldStatus;
 lead.status = _fqType === 'payment' ? 'payment' : 'followup';
-lead.followupDate = date;
-lead.followupTime = time;
-lead.followupNote = note;
-lead.followupType = _fqType === 'call' ? _fqCallSubtype : _fqType;
+  lead.statusChangedAt = nowISOString();
+  lead.followupDate = date;
+  lead.followupTime = time;
+  lead.followupNote = note;
+  lead.followupType = _fqType === 'call' ? _fqCallSubtype : _fqType;
   if (_fqType === 'payment') {
     lead.followupAmount = parseFloat(document.getElementById('fq-amount').value) || 0;
   }
@@ -1983,20 +2077,21 @@ lead.followupType = _fqType === 'call' ? _fqCallSubtype : _fqType;
       await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({
-      status: _fqType === 'payment' ? 'payment' : 'followup',
-          followup_date: date,
-          followup_note: note,
-          followup_time: time,
-          followup_type: _fqType === 'call' ? _fqCallSubtype : _fqType,
-          followup_amount: lead.followupAmount || null,
-          sale_amount: lead.saleAmount || 0
-        })
+    body: JSON.stringify({
+        status: _fqType === 'payment' ? 'payment' : 'followup',
+        status_changed_at: lead.statusChangedAt,
+        followup_date: date,
+        followup_note: note,
+        followup_time: time,
+        followup_type: _fqType === 'call' ? _fqCallSubtype : _fqType,
+        followup_amount: lead.followupAmount || null,
+        sale_amount: lead.saleAmount || 0
+      })
       });
     } catch(e) { console.error('Followup save error:', e); }
   }
 
-  save(); renderLeads(); renderSuspended(); renderHome();
+  save(); syncAndRender();
 
   const typeLabels = { call: '📞 Call', payment: '💳 Payment', gbp: '📍 GBP Report' };
   toast(`${typeLabels[_fqType]} follow-up set for ${date} at ${time}`);
@@ -2509,11 +2604,16 @@ function selectReminder(mins) {
 
 // ── AUTO REFRESH ──
 function startAutoRefresh() {
-  setInterval(async () => {
-    if (!state.user) return;
-    await fetchAllFromSupabase();
-    renderHome(); renderLeads(); renderLeadsStats(); renderSuspended(); renderContacts(); renderSales();
-  }, 180000);
+  setInterval(syncAndRender, 180000);
+}
+
+async function syncAndRender() {
+  if (!state.user) return;
+  await fetchAllFromSupabase();
+  renderHome(); renderLeads(); renderLeadsStats(); renderSuspended(); renderContacts(); renderSales();
+  const currentPage = localStorage.getItem('nexaflow_page');
+  if (currentPage === 'action') renderActionPage();
+  if (currentPage === 'funnel') renderFunnelPage();
 }
 
 // ── CALL REMINDER POPUP ──
