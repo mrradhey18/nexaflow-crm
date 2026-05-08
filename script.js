@@ -1413,7 +1413,7 @@ function renderLeadsPie() {
     { key: 'not_escalated', label: 'Not Escalated',   count: leads.filter(l => l.status === 'not_escalated').length,  color: '#94a3b8', bg: '#94a3b814' },
     { key: 'outreach_wapp', label: 'Outreach (Wapp)', count: leads.filter(l => l.status === 'outreach_wapp').length,   color: '#22c55e', bg: '#22c55e14' },
     { key: 'outreach_call', label: 'Outreach (Call)', count: leads.filter(l => l.status === 'outreach_call').length,   color: '#3b82f6', bg: '#3b82f614' },
-    { key: 'prospecting',   label: 'Unresponsive',     count: leads.filter(l => l.status === 'unresponsive').length,     color: '#f59e0b', bg: '#f59e0b14' },
+    { key: 'prospecting',   label: 'Unresponsive',     count: leads.filter(l => l.status === 'prospecting' || l.status === 'Unresponsive' || l.status === 'unresponsive').length,     color: '#f59e0b', bg: '#f59e0b14' },
     { key: 'payment',       label: 'Payment',         count: leads.filter(l => l.status === 'payment').length,         color: '#8b5cf6', bg: '#8b5cf614' },
     { key: 'followup',      label: 'Follow-up',       count: leads.filter(l => l.status === 'followup').length,        color: '#06b6d4', bg: '#06b6d414' },
     { key: 'converted',     label: 'Converted',       count: leads.filter(l => l.status === 'converted').length,       color: '#4ade80', bg: '#4ade8014' },
