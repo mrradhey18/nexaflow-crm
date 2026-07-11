@@ -3074,11 +3074,16 @@ function renderSocialTimeline(posts) {
           </div>
           <div class="social-timeline-title">${esc(p.title)}</div>
           <div class="social-timeline-footer">
-            <div class="platform-icon-row">
-              ${(p.platforms || []).map(pl => `<span class="platform-icon-pill" title="${PLATFORM_LABELS[pl] || pl}">${socialPlatformSVG(pl)}</span>`).join('')}
-            </div>
-            <span class="badge badge-${p.status === 'posted' ? 'green' : p.status === 'ready' ? 'amber' : p.status === 'planned' ? 'blue' : 'gray'}">${p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span>
-          </div>
+  <div class="platform-icon-row">
+    ${(p.platforms || []).map(pl => `<span class="platform-icon-pill" title="${PLATFORM_LABELS[pl] || pl}">${socialPlatformSVG(pl)}</span>`).join('')}
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="badge badge-${p.status === 'posted' ? 'green' : p.status === 'ready' ? 'amber' : p.status === 'planned' ? 'blue' : 'gray'}">${p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span>
+    <button onclick="event.stopPropagation(); deleteSocialPost('${p.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);padding:0;display:flex" title="Delete post">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+    </button>
+  </div>
+</div>
         </div>
       </div>`;
   }).join('');
@@ -3100,12 +3105,17 @@ function renderSocialKanban(posts) {
         <div class="kanban-card" draggable="true" ondragstart="onKanbanDragStart(event,'${p.id}')" onclick="openSocialScheduleModal('${p.id}')">
           <div class="kanban-card-title">${esc(p.title)}</div>
           <div class="kanban-card-date">${meta.icon} ${meta.label} · ${dateDisplay}${p.time ? ' · ' + p.time : ''}</div>
-          <div class="kanban-card-foot">
-            <div class="platform-icon-row">
-              ${(p.platforms || []).map(pl => `<span class="platform-icon-pill" title="${PLATFORM_LABELS[pl] || pl}">${socialPlatformSVG(pl)}</span>`).join('')}
-            </div>
-            ${p.status === 'posted' ? '<span style="color:var(--green);font-size:13px">✓</span>' : ''}
-          </div>
+        <div class="kanban-card-foot">
+  <div class="platform-icon-row">
+    ${(p.platforms || []).map(pl => `<span class="platform-icon-pill" title="${PLATFORM_LABELS[pl] || pl}">${socialPlatformSVG(pl)}</span>`).join('')}
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    ${p.status === 'posted' ? '<span style="color:var(--green);font-size:13px">✓</span>' : ''}
+    <button onclick="event.stopPropagation(); deleteSocialPost('${p.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);padding:0;display:flex" title="Delete post">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:12px;height:12px" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+    </button>
+  </div>
+</div>
         </div>`;
     }).join('');
   });
