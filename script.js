@@ -3262,12 +3262,18 @@ async function saveSocialPost() {
     const method = editId ? 'PATCH' : 'POST';
     const url = editId ? `${supaUrl}/rest/v1/social_posts?id=eq.${editId}` : `${supaUrl}/rest/v1/social_posts`;
     try {
-      await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
         body: JSON.stringify(post)
       });
-    } catch(e) { console.error('Social post save error:', e); toast('Save failed'); return; }
+      if (!res.ok) {
+        const errText = await res.text();
+        toast('Save failed: ' + errText.slice(0, 80));
+        console.error('Social post save error:', errText);
+        return;
+      }
+    } catch(e) { console.error('Social post save error:', e); toast('Network error saving post'); return; }
   }
 
   const localPost = {
