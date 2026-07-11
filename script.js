@@ -177,7 +177,8 @@ function doLogin() {
   });
 }
 
-function doLogout() {
+async function doLogout() {
+  await supabase.auth.signOut();
   state.user = null;
   state.leads = [];
   state.tasks = [];
@@ -3372,17 +3373,66 @@ setInterval(checkTaskReminders, 60000); // checks every 1 min
 setInterval(checkSocialReminders, 60000);
 
 
- const supabase = window.supabase.createClient(
-    'https://<your-project-ref>.supabase.co',
-    '<your-anon-key>'
-  )
+const supabase = window.supabase.createClient(
+    'https://fkawawrnhkmbztfnnils.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrYXdhd3JuaGttYnp0Zm5uaWxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODA4MjEsImV4cCI6MjA5Mjk1NjgyMX0.FGhl-zknybhdfObsQaBmqiwrDRlFdDL4q-tOiuBOOeo'
+);
 
-  document.getElementById('google-login').addEventListener('click', async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: 'https://crm.nexaflow.bar/dashboard.html'
-      }
-    })
-    if (error) console.error('Login error:', error)
-  })
+// Trigger Google OAuth
+document.getElementById('google-login').addEventListener('click', async () => {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: 'https://crm.nexaflow.bar/dashboard.html' }
+  });
+  if (error) console.error('Login error:', error);
+});
+
+// After Google redirects back, check for a session and wire it into your app's state
+async function checkGoogleSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return false;
+
+  state.user = {
+    email: session.user.email,
+    name: session.user.email.split('@')[0],
+    token: session.access_token,
+    refresh_token: session.refresh_token
+  };
+  save();
+
+  // Pull profile info (display name, photo) same as your password login does
+  try {
+    const profileRes = await fetch(
+      `https://fkawawrnhkmbztfnnils.supabase.co/rest/v1/profiles?user_email=eq.${encodeURIComponent(session.user.email)}&limit=1`,
+      { headers: { apikey: session.access_token, Authorization: 'Bearer ' + session.access_token } }
+    );
+    const rows = await profileRes.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+      if (rows[0].display_name) state.user.name = rows[0].display_name;
+      if (rows[0].profile_img) state.user.profileImg = rows[0].profile_img;
+      save();
+    }
+  } catch (e) { console.log('Profile fetch error:', e); }
+
+  return true;
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  load();
+  applyTheme();
+  if (APP_LOGO) {
+    document.getElementById('login-logo-img').src = APP_LOGO;
+    document.getElementById('login-logo-img').style.display = '';
+    document.getElementById('login-logo-icon').style.display = 'none';
+  }
+
+  const googleLoggedIn = await checkGoogleSession();
+  if (!googleLoggedIn && (!state.user || !state.user.token)) { showLogin(); return; }
+
+  initApp();
+  const lastPage = localStorage.getItem('nexaflow_page');
+  if (lastPage) {
+    const btn = document.querySelector(`.nav-item[onclick*="'${lastPage}'"]`);
+    showPage(lastPage, btn);
+  }
+});
