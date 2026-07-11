@@ -113,6 +113,10 @@
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
       Contacts
     </button>
+    <button class="nav-item" onclick="showPage('social',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="9" width="20" height="12" rx="2"/><path d="M7 9V6a5 5 0 0110 0v3"/><line x1="12" y1="13" x2="12" y2="17"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Social Media
+    </button>
     <div class="nav-sep"></div>
     <span class="nav-label">System</span>
     <button class="nav-item" onclick="showPage('settings',this)">
@@ -505,6 +509,130 @@
           </button>
         </div>
         <div class="contacts-grid" id="contacts-grid"></div>
+      </div>
+    </div>
+
+    <!-- SOCIAL MEDIA PAGE -->
+    <div class="page" id="page-social" style="width:100%">
+      <div style="margin-bottom:16px">
+        <div style="font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px">Social Media Manager</div>
+        <div style="font-size:13px;color:var(--text3)">Plan, schedule, and track content across platforms for each client</div>
+      </div>
+
+      <!-- CLIENT SELECTOR -->
+      <div class="section" style="margin-bottom:16px">
+        <div class="section-head">
+          <div class="section-title">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Client
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <div class="form-group">
+            <label>Select Client</label>
+            <select id="social-client-select" onchange="loadClientSocialData()">
+              <option value="">-- Choose a client --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <div style="font-size:12px;color:var(--text3);padding-top:8px">Clients come from your existing Leads list. Add or edit clients from the Leads page.</div>
+          </div>
+        </div>
+
+        <!-- CLIENT DETAILS (read-only, sourced from Leads) -->
+        <div id="social-client-details" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div class="form-row three">
+            <div>
+              <div class="stat-label" style="margin-bottom:4px">Phone</div>
+              <div style="font-size:13px;color:var(--text)" id="sc-phone">—</div>
+            </div>
+            <div>
+              <div class="stat-label" style="margin-bottom:4px">City</div>
+              <div style="font-size:13px;color:var(--text)" id="sc-city">—</div>
+            </div>
+            <div>
+              <div class="stat-label" style="margin-bottom:4px">Website</div>
+              <div style="font-size:13px;color:var(--text)" id="sc-website">—</div>
+            </div>
+          </div>
+          <div class="form-row three" style="margin-top:12px">
+            <div>
+              <div class="stat-label" style="margin-bottom:4px">GBP Rank</div>
+              <div style="font-size:13px;color:var(--text)" id="sc-gbp">—</div>
+            </div>
+            <div>
+              <div class="stat-label" style="margin-bottom:4px">Status</div>
+              <div style="font-size:13px;color:var(--text)" id="sc-status">—</div>
+            </div>
+            <div>
+              <div class="stat-label" style="margin-bottom:4px">Reviews</div>
+              <div style="font-size:13px;color:var(--text)" id="sc-reviews">—</div>
+            </div>
+          </div>
+
+          <!-- GOALS (replaces "Notes") -->
+          <div style="margin-top:16px">
+            <div class="form-section-label">🎯 Goals</div>
+            <textarea id="social-client-goals" placeholder="Client goals, campaign objectives, reminders, important instructions..." style="min-height:80px" onblur="saveClientGoals()"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTENT PLANNER -->
+      <div id="social-planner-wrap" style="display:none">
+        <div class="section-head" style="margin-bottom:12px">
+          <div class="section-title">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Content Planner
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="social-view-toggle" id="social-view-toggle">
+              <button class="social-view-btn active" data-view="timeline" onclick="switchSocialView('timeline')">Timeline</button>
+              <button class="social-view-btn" data-view="kanban" onclick="switchSocialView('kanban')">Kanban</button>
+            </div>
+            <button class="btn btn-primary" onclick="openSocialScheduleModal()">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Schedule Post
+            </button>
+          </div>
+        </div>
+
+        <!-- TIMELINE VIEW -->
+        <div class="section" id="social-timeline-view">
+          <div id="social-timeline-track" class="social-timeline-track"></div>
+          <div class="empty-state" id="social-timeline-empty">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <p>No posts scheduled yet. Click "Schedule Post" to plan your first one.</p>
+          </div>
+        </div>
+
+        <!-- KANBAN VIEW -->
+        <div class="section" id="social-kanban-view" style="display:none;overflow-x:auto">
+          <div class="kanban-board">
+            <div class="kanban-col" data-status="idea" ondragover="onKanbanDragOver(event)" ondrop="onKanbanDrop(event,'idea')">
+              <div class="kanban-col-head"><span class="kanban-dot" style="background:var(--text3)"></span>Ideas <span class="kanban-count" id="kanban-count-idea">0</span></div>
+              <div class="kanban-col-body" id="kanban-col-idea"></div>
+            </div>
+            <div class="kanban-col" data-status="planned" ondragover="onKanbanDragOver(event)" ondrop="onKanbanDrop(event,'planned')">
+              <div class="kanban-col-head"><span class="kanban-dot" style="background:var(--accent)"></span>Planned <span class="kanban-count" id="kanban-count-planned">0</span></div>
+              <div class="kanban-col-body" id="kanban-col-planned"></div>
+            </div>
+            <div class="kanban-col" data-status="ready" ondragover="onKanbanDragOver(event)" ondrop="onKanbanDrop(event,'ready')">
+              <div class="kanban-col-head"><span class="kanban-dot" style="background:var(--amber)"></span>Ready <span class="kanban-count" id="kanban-count-ready">0</span></div>
+              <div class="kanban-col-body" id="kanban-col-ready"></div>
+            </div>
+            <div class="kanban-col" data-status="posted" ondragover="onKanbanDragOver(event)" ondrop="onKanbanDrop(event,'posted')">
+              <div class="kanban-col-head"><span class="kanban-dot" style="background:var(--green)"></span>Posted <span class="kanban-count" id="kanban-count-posted">0</span></div>
+              <div class="kanban-col-body" id="kanban-col-posted"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state" id="social-no-client-empty">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <p>Select a client above to view or plan their social media content.</p>
       </div>
     </div>
 
@@ -920,6 +1048,124 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-sale')">Cancel</button>
       <button class="btn btn-primary" onclick="saveSale()">Save Sale</button>
+    </div>
+  </div>
+</div>
+
+<!-- SOCIAL SCHEDULE POST MODAL -->
+<div class="modal-overlay" id="modal-social-schedule">
+  <div class="modal modal-lg">
+    <div class="modal-title">
+      <span id="social-modal-title">Schedule Post</span>
+      <button class="modal-close" onclick="closeModal('modal-social-schedule')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <input type="hidden" id="sp-edit-id">
+    <input type="hidden" id="sp-client-id">
+
+    <div class="form-section-label">Schedule</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date *</label>
+        <input type="date" id="sp-date">
+      </div>
+      <div class="form-group">
+        <label>Time *</label>
+        <input type="time" id="sp-time">
+      </div>
+    </div>
+
+    <div class="form-section-label">Content</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Content Type</label>
+        <select id="sp-type">
+          <option value="reel">🎬 Reel</option>
+          <option value="story">⭕ Story</option>
+          <option value="carousel">🖼️ Carousel</option>
+          <option value="post">🖊️ Post</option>
+          <option value="short">📱 Short</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="sp-status">
+          <option value="idea">Idea</option>
+          <option value="planned">Planned</option>
+          <option value="ready">Ready</option>
+          <option value="posted">Posted</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" id="sp-title" placeholder="Short title for this post">
+      </div>
+    </div>
+
+    <div class="form-section-label">Platforms</div>
+    <div class="platform-checks" id="sp-platforms">
+      <label class="platform-chip" data-platform="instagram">
+        <input type="checkbox" value="instagram">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
+        Instagram
+      </label>
+      <label class="platform-chip" data-platform="facebook">
+        <input type="checkbox" value="facebook">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+        Facebook
+      </label>
+      <label class="platform-chip" data-platform="youtube">
+        <input type="checkbox" value="youtube">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M22.5 6.5s-.2-1.6-.8-2.3c-.8-.9-1.7-.9-2.1-1C16.9 3 12 3 12 3h0s-4.9 0-7.6.2c-.4.1-1.3.1-2.1 1-.6.7-.8 2.3-.8 2.3S1.3 8.4 1.3 10.3v1.4c0 1.9.2 3.8.2 3.8s.2 1.6.8 2.3c.8.9 1.9.9 2.4 1 1.7.2 7.3.2 7.3.2s4.9 0 7.6-.2c.4-.1 1.3-.1 2.1-1 .6-.7.8-2.3.8-2.3s.2-1.9.2-3.8v-1.4c0-1.9-.2-3.8-.2-3.8z"/><polygon points="9.8,14.5 15.5,11.2 9.8,7.9" fill="currentColor" stroke="none"/></svg>
+        YouTube
+      </label>
+      <label class="platform-chip" data-platform="gbp">
+        <input type="checkbox" value="gbp">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        GBP
+      </label>
+      <label class="platform-chip" data-platform="linkedin">
+        <input type="checkbox" value="linkedin">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="3"/><line x1="7" y1="10" x2="7" y2="17"/><circle cx="7" cy="6.5" r="1"/><path d="M11 17v-4a2.5 2.5 0 015 0v4"/><line x1="11" y1="10" x2="11" y2="17"/></svg>
+        LinkedIn
+      </label>
+      <label class="platform-chip" data-platform="x">
+        <input type="checkbox" value="x">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><line x1="4" y1="4" x2="20" y2="20"/><line x1="20" y1="4" x2="4" y2="20"/></svg>
+        X (Twitter)
+      </label>
+    </div>
+
+    <div class="form-row full" style="margin-top:14px">
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea id="sp-note" placeholder="Any additional notes about this post..." style="min-height:52px"></textarea>
+      </div>
+    </div>
+    <div class="err-msg" id="sp-err" style="text-align:left"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-social-schedule')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSocialPost()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- SOCIAL "MARK AS POSTED" CONFIRM MODAL -->
+<div class="modal-overlay" id="modal-social-confirm-posted">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">
+      Confirm
+      <button class="modal-close" onclick="cancelSocialPostedConfirm()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div style="font-size:14px;color:var(--text2);margin-bottom:20px">Have you posted this content?</div>
+    <div class="modal-actions" style="justify-content:stretch">
+      <button class="btn btn-ghost" style="flex:1" onclick="cancelSocialPostedConfirm()">No</button>
+      <button class="btn btn-success" style="flex:1" onclick="confirmSocialPosted()">✓ Yes, Posted</button>
     </div>
   </div>
 </div>
