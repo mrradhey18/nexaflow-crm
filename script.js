@@ -3243,7 +3243,7 @@ async function saveSocialPost() {
   if (!platforms.length) { err.textContent = '⚠️ Select at least one platform.'; return; }
 
   const post = {
-    id: editId || uid(),
+    ...(editId ? { id: editId } : {}),
     client_id: clientId,
     scheduled_date: date,
     scheduled_time: time,
@@ -3261,12 +3261,20 @@ async function saveSocialPost() {
   if (supaKey) {
     const method = editId ? 'PATCH' : 'POST';
     const url = editId ? `${supaUrl}/rest/v1/social_posts?id=eq.${editId}` : `${supaUrl}/rest/v1/social_posts`;
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
-        body: JSON.stringify(post)
-      });
+   try {
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=representation' },
+    body: JSON.stringify(post)
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    toast('Save failed: ' + errText.slice(0, 80));
+    console.error('Social post save error:', errText);
+    return;
+  }
+  const savedRows = await res.json();
+  const savedId = editId || (Array.isArray(savedRows) && savedRows[0]?.id);
       if (!res.ok) {
         const errText = await res.text();
         toast('Save failed: ' + errText.slice(0, 80));
@@ -3277,10 +3285,10 @@ async function saveSocialPost() {
   }
 
   const localPost = {
-    id: post.id, clientId: post.client_id, date: post.scheduled_date, time: post.scheduled_time,
+    id: savedId, clientId: post.client_id, date: post.scheduled_date, time: post.scheduled_time,
     contentType: post.content_type, platforms: post.platforms, title: post.title, notes: post.notes,
     status: post.status, orderIndex: post.order_index, createdAt: post.created_at, userEmail: post.user_email
-  };
+};
 
   if (editId) {
     const idx = state.socialPosts.findIndex(p => p.id === editId);
