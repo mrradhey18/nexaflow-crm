@@ -3370,3 +3370,19 @@ function dismissSocialReminder() {
 setInterval(checkCallReminders, 15000);
 setInterval(checkTaskReminders, 60000); // checks every 1 min
 setInterval(checkSocialReminders, 60000);
+
+
+ const supabase = window.supabase.createClient(
+    'https://<your-project-ref>.supabase.co',
+    '<your-anon-key>'
+  )
+
+  document.getElementById('google-login').addEventListener('click', async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'https://crm.nexaflow.bar/dashboard.html'
+      }
+    })
+    if (error) console.error('Login error:', error)
+  })
