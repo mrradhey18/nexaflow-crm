@@ -22,6 +22,7 @@ let state = {
   calls: [],
   contacts: [],
   sales: [],
+  socialPosts: [],
   settings: { supaUrl: 'https://fkawawrnhkmbztfnnils.supabase.co', supaKey: '', logo: '' }
 };
 
@@ -43,6 +44,7 @@ function load() {
   if (!Array.isArray(state.contacts)) state.contacts = [];
   if (!Array.isArray(state.tasks)) state.tasks = [];
   if (!Array.isArray(state.calls)) state.calls = [];
+  if (!Array.isArray(state.socialPosts)) state.socialPosts = [];
 }
 
 // ── INIT ──
@@ -102,6 +104,8 @@ function initApp() {
   document.getElementById('lead-phone').addEventListener('input', function() {
     const w = document.getElementById('duplicate-warning'); if(w) w.remove();
   });
+  initSocialPlatformChips();
+  initKanbanDragLeave();
   startAutoRefresh();
 
   fetchAllFromSupabase().then(() => {
@@ -180,6 +184,7 @@ function doLogout() {
   state.calls = [];
   state.contacts = [];
   state.sales = [];
+  state.socialPosts = [];
   save();
   location.reload();
 }
@@ -199,7 +204,7 @@ function showPage(id, btn) {
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashboard:'Dashboard', contacts:'Contacts', settings:'Settings', action:'Action Required ⚡', funnel:'Conversion Funnel' };
+  const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashboard:'Dashboard', contacts:'Contacts', social:'Social Media Manager', settings:'Settings', action:'Action Required ⚡', funnel:'Conversion Funnel' };
   document.getElementById('page-title').textContent = titles[id] || id;
   if (id === 'home') renderHome();
   if (id === 'dashboard') {
@@ -218,6 +223,7 @@ function showPage(id, btn) {
   if (id === 'action') renderActionPage();
   if (id === 'funnel') renderFunnelPage();
   if (id === 'contacts') renderContacts();
+  if (id === 'social') initSocialPage();
   if (id === 'sales') renderSales();
   if (id === 'settings') loadProfileUI();
   closeSidebar();
@@ -263,6 +269,7 @@ async function fetchAllFromSupabase() {
         reviews: r.reviews, note: r.note, status: r.status, saleAmount: r.sale_amount,
         convertedAt: r.converted_at, followupDate: r.followup_date || '',
         timing: r.timing || '',
+        socialGoals: r.social_goals || '',
        followupNote: r.followup_note || '', followupTime: r.followup_time || '',
       followupType: r.followup_type || '', followupAmount: r.followup_amount || 0,
       createdAt: r.created_at, statusChangedAt: r.status_changed_at || r.created_at,
@@ -316,6 +323,19 @@ async function fetchAllFromSupabase() {
           id: r.id, name: r.name, phone: r.phone || '', time: r.time || '',
           note: r.note || '', date: r.date, done: r.done || false,
           createdAt: r.created_at, reminder_mins: r.reminder_mins || null
+        }));
+      }
+    }
+
+    const socialRes = await fetch(`${supaUrl}/rest/v1/social_posts?order=scheduled_date.asc,scheduled_time.asc`, { headers });
+    if (socialRes.ok) {
+      const socialRows = await socialRes.json();
+      if (Array.isArray(socialRows)) {
+        state.socialPosts = socialRows.map(r => ({
+          id: r.id, clientId: r.client_id, date: r.scheduled_date, time: r.scheduled_time || '',
+          contentType: r.content_type || 'post', platforms: r.platforms || [],
+          title: r.title || '', notes: r.notes || '', status: r.status || 'idea',
+          orderIndex: r.order_index || 0, createdAt: r.created_at, userEmail: r.user_email
         }));
       }
     }
@@ -2613,6 +2633,7 @@ async function syncAndRender() {
   const currentPage = localStorage.getItem('nexaflow_page');
   if (currentPage === 'action') renderActionPage();
   if (currentPage === 'funnel') renderFunnelPage();
+  if (currentPage === 'social') { renderSocialClientSelect(); if (socialSelectedClientId) renderSocialPosts(); }
 }
 
 // ── CALL REMINDER POPUP ──
@@ -2898,5 +2919,454 @@ async function confirmConvert() {
   _convertLeadId = null; _convertAmount = null;
 }
 
+// ══════════════════════════════════════
+// ── SOCIAL MEDIA MANAGER ──
+// ══════════════════════════════════════
+
+let socialCurrentView = 'timeline';
+let socialSelectedClientId = '';
+let _pendingKanbanPostId = null;
+
+const CONTENT_TYPE_META = {
+  reel:     { icon:'🎬', label:'Reel' },
+  story:    { icon:'⭕', label:'Story' },
+  carousel: { icon:'🖼️', label:'Carousel' },
+  post:     { icon:'🖊️', label:'Post' },
+  short:    { icon:'📱', label:'Short' }
+};
+
+const KANBAN_STATUSES = ['idea','planned','ready','posted'];
+
+function socialPlatformSVG(key) {
+  const icons = {
+    instagram: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>`,
+    facebook: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>`,
+    youtube: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M22.5 6.5s-.2-1.6-.8-2.3c-.8-.9-1.7-.9-2.1-1C16.9 3 12 3 12 3h0s-4.9 0-7.6.2c-.4.1-1.3.1-2.1 1-.6.7-.8 2.3-.8 2.3S1.3 8.4 1.3 10.3v1.4c0 1.9.2 3.8.2 3.8s.2 1.6.8 2.3c.8.9 1.9.9 2.4 1 1.7.2 7.3.2 7.3.2s4.9 0 7.6-.2c.4-.1 1.3-.1 2.1-1 .6-.7.8-2.3.8-2.3s.2-1.9.2-3.8v-1.4c0-1.9-.2-3.8-.2-3.8z"/><polygon points="9.8,14.5 15.5,11.2 9.8,7.9" fill="currentColor" stroke="none"/></svg>`,
+    gbp: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+    linkedin: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="3"/><line x1="7" y1="10" x2="7" y2="17"/><circle cx="7" cy="6.5" r="1"/><path d="M11 17v-4a2.5 2.5 0 015 0v4"/><line x1="11" y1="10" x2="11" y2="17"/></svg>`,
+    x: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><line x1="4" y1="4" x2="20" y2="20"/><line x1="20" y1="4" x2="4" y2="20"/></svg>`
+  };
+  return icons[key] || '';
+}
+
+const PLATFORM_LABELS = { instagram:'Instagram', facebook:'Facebook', youtube:'YouTube', gbp:'GBP', linkedin:'LinkedIn', x:'X (Twitter)' };
+
+// ── PAGE INIT ──
+function initSocialPage() {
+  renderSocialClientSelect();
+  const sel = document.getElementById('social-client-select');
+  if (socialSelectedClientId && state.leads.find(l => l.id === socialSelectedClientId)) {
+    sel.value = socialSelectedClientId;
+    loadClientSocialData();
+  } else {
+    socialSelectedClientId = '';
+    document.getElementById('social-client-details').style.display = 'none';
+    document.getElementById('social-planner-wrap').style.display = 'none';
+    document.getElementById('social-no-client-empty').style.display = '';
+  }
+}
+
+function renderSocialClientSelect() {
+  const sel = document.getElementById('social-client-select');
+  if (!sel) return;
+  const current = sel.value;
+  const clients = state.leads.filter(l => l.status !== 'suspended').sort((a,b) => a.name.localeCompare(b.name));
+  sel.innerHTML = '<option value="">-- Choose a client --</option>' +
+    clients.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  if (current) sel.value = current;
+}
+
+function loadClientSocialData() {
+  const id = document.getElementById('social-client-select').value;
+  socialSelectedClientId = id;
+  const detailsEl = document.getElementById('social-client-details');
+  const plannerEl = document.getElementById('social-planner-wrap');
+  const emptyEl = document.getElementById('social-no-client-empty');
+
+  if (!id) {
+    detailsEl.style.display = 'none';
+    plannerEl.style.display = 'none';
+    emptyEl.style.display = '';
+    return;
+  }
+
+  const lead = state.leads.find(l => l.id === id);
+  if (!lead) return;
+
+  document.getElementById('sc-phone').textContent = lead.phone || '—';
+  document.getElementById('sc-city').textContent = lead.city || '—';
+  document.getElementById('sc-website').textContent = lead.website === 'yes' ? '✅ Yes' : lead.website === 'not_working' ? '⚠️ Not Working' : '❌ No';
+  document.getElementById('sc-gbp').textContent = lead.gbpRank || '—';
+  document.getElementById('sc-status').textContent = statusLabel(lead.status);
+  document.getElementById('sc-reviews').textContent = lead.reviews || '—';
+  document.getElementById('social-client-goals').value = lead.socialGoals || '';
+
+  detailsEl.style.display = '';
+  plannerEl.style.display = '';
+  emptyEl.style.display = 'none';
+
+  renderSocialPosts();
+}
+
+async function saveClientGoals() {
+  const id = socialSelectedClientId;
+  if (!id) return;
+  const val = document.getElementById('social-client-goals').value;
+  const lead = state.leads.find(l => l.id === id);
+  if (lead) lead.socialGoals = val;
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ social_goals: val })
+      });
+    } catch(e) { console.error('Goals save error:', e); }
+  }
+  save();
+  toast('Goals saved');
+}
+
+// ── VIEW SWITCH ──
+function switchSocialView(view) {
+  socialCurrentView = view;
+  document.querySelectorAll('.social-view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  document.getElementById('social-timeline-view').style.display = view === 'timeline' ? '' : 'none';
+  document.getElementById('social-kanban-view').style.display = view === 'kanban' ? '' : 'none';
+  renderSocialPosts();
+}
+
+function getClientPosts() {
+  return state.socialPosts
+    .filter(p => p.clientId === socialSelectedClientId)
+    .sort((a,b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
+}
+
+function renderSocialPosts() {
+  const posts = getClientPosts();
+  if (socialCurrentView === 'timeline') renderSocialTimeline(posts);
+  else renderSocialKanban(posts);
+}
+
+// ── TIMELINE VIEW ──
+function renderSocialTimeline(posts) {
+  const track = document.getElementById('social-timeline-track');
+  const empty = document.getElementById('social-timeline-empty');
+  if (!posts.length) { track.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  track.innerHTML = posts.map((p, i) => {
+    const meta = CONTENT_TYPE_META[p.contentType] || CONTENT_TYPE_META.post;
+    const dateDisplay = p.date ? new Date(p.date + 'T00:00:00').toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
+    const stateCls = p.status === 'posted' ? 'is-posted' : p.status === 'idea' ? 'is-idea' : '';
+    return `
+      <div class="social-timeline-item ${stateCls}">
+        <div class="social-timeline-num">${i + 1}</div>
+        <div class="social-timeline-card" onclick="openSocialScheduleModal('${p.id}')">
+          <div class="social-timeline-head">
+            <div>
+              <span class="social-timeline-date">${dateDisplay}</span>
+              ${p.time ? `<span class="social-timeline-time">⏰ ${p.time}</span>` : ''}
+            </div>
+            <span class="content-type-badge">${meta.icon} ${meta.label}</span>
+          </div>
+          <div class="social-timeline-title">${esc(p.title)}</div>
+          <div class="social-timeline-footer">
+            <div class="platform-icon-row">
+              ${(p.platforms || []).map(pl => `<span class="platform-icon-pill" title="${PLATFORM_LABELS[pl] || pl}">${socialPlatformSVG(pl)}</span>`).join('')}
+            </div>
+            <span class="badge badge-${p.status === 'posted' ? 'green' : p.status === 'ready' ? 'amber' : p.status === 'planned' ? 'blue' : 'gray'}">${p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── KANBAN VIEW ──
+function renderSocialKanban(posts) {
+  KANBAN_STATUSES.forEach(status => {
+    const body = document.getElementById('kanban-col-' + status);
+    const countEl = document.getElementById('kanban-count-' + status);
+    if (!body || !countEl) return;
+    const items = posts.filter(p => p.status === status);
+    countEl.textContent = items.length;
+
+    body.innerHTML = items.map(p => {
+      const meta = CONTENT_TYPE_META[p.contentType] || CONTENT_TYPE_META.post;
+      const dateDisplay = p.date ? new Date(p.date + 'T00:00:00').toLocaleDateString('en-IN', { day:'numeric', month:'short' }) : '—';
+      return `
+        <div class="kanban-card" draggable="true" ondragstart="onKanbanDragStart(event,'${p.id}')" onclick="openSocialScheduleModal('${p.id}')">
+          <div class="kanban-card-title">${esc(p.title)}</div>
+          <div class="kanban-card-date">${meta.icon} ${meta.label} · ${dateDisplay}${p.time ? ' · ' + p.time : ''}</div>
+          <div class="kanban-card-foot">
+            <div class="platform-icon-row">
+              ${(p.platforms || []).map(pl => `<span class="platform-icon-pill" title="${PLATFORM_LABELS[pl] || pl}">${socialPlatformSVG(pl)}</span>`).join('')}
+            </div>
+            ${p.status === 'posted' ? '<span style="color:var(--green);font-size:13px">✓</span>' : ''}
+          </div>
+        </div>`;
+    }).join('');
+  });
+}
+
+function onKanbanDragStart(e, postId) {
+  e.dataTransfer.setData('text/plain', postId);
+  setTimeout(() => e.target.classList.add('dragging'), 0);
+}
+
+function onKanbanDragOver(e) {
+  e.preventDefault();
+  const col = e.currentTarget;
+  col.classList.add('drag-over');
+}
+
+function initKanbanDragLeave() {
+  document.querySelectorAll('.kanban-col').forEach(col => {
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+  });
+  document.addEventListener('dragend', () => {
+    document.querySelectorAll('.kanban-card.dragging').forEach(c => c.classList.remove('dragging'));
+    document.querySelectorAll('.kanban-col.drag-over').forEach(c => c.classList.remove('drag-over'));
+  });
+}
+
+async function onKanbanDrop(e, newStatus) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const postId = e.dataTransfer.getData('text/plain');
+  const post = state.socialPosts.find(p => p.id === postId);
+  if (!post || post.status === newStatus) return;
+
+  if (newStatus === 'posted') {
+    _pendingKanbanPostId = postId;
+    openModal('modal-social-confirm-posted');
+    return;
+  }
+  await updateSocialPostStatus(postId, newStatus);
+}
+
+function cancelSocialPostedConfirm() {
+  closeModal('modal-social-confirm-posted');
+  _pendingKanbanPostId = null;
+  renderSocialPosts();
+}
+
+async function confirmSocialPosted() {
+  const postId = _pendingKanbanPostId;
+  closeModal('modal-social-confirm-posted');
+  _pendingKanbanPostId = null;
+  if (postId) await updateSocialPostStatus(postId, 'posted');
+}
+
+async function updateSocialPostStatus(postId, status) {
+  const post = state.socialPosts.find(p => p.id === postId);
+  if (!post) return;
+  post.status = status;
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/social_posts?id=eq.${postId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status })
+      });
+    } catch(e) { console.error('Status update error:', e); }
+  }
+  save();
+  renderSocialPosts();
+  toast(status === 'posted' ? '✅ Marked as Posted' : `Moved to ${status.charAt(0).toUpperCase()+status.slice(1)}`);
+}
+
+// ── SCHEDULE MODAL ──
+function initSocialPlatformChips() {
+  document.querySelectorAll('#sp-platforms input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      cb.closest('.platform-chip').classList.toggle('checked', cb.checked);
+    });
+  });
+}
+
+function openSocialScheduleModal(id) {
+  if (!socialSelectedClientId) { toast('Select a client first'); return; }
+
+  document.getElementById('social-modal-title').textContent = id ? 'Edit Post' : 'Schedule Post';
+  document.getElementById('sp-edit-id').value = id || '';
+  document.getElementById('sp-client-id').value = socialSelectedClientId;
+  document.getElementById('sp-err').textContent = '';
+
+  document.querySelectorAll('#sp-platforms input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+    cb.closest('.platform-chip').classList.remove('checked');
+  });
+
+  if (id) {
+    const p = state.socialPosts.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('sp-date').value = p.date || '';
+    document.getElementById('sp-time').value = p.time || '';
+    document.getElementById('sp-type').value = p.contentType || 'post';
+    document.getElementById('sp-status').value = p.status || 'idea';
+    document.getElementById('sp-title').value = p.title || '';
+    document.getElementById('sp-note').value = p.notes || '';
+    (p.platforms || []).forEach(pl => {
+      const cb = document.querySelector(`#sp-platforms input[value="${pl}"]`);
+      if (cb) { cb.checked = true; cb.closest('.platform-chip').classList.add('checked'); }
+    });
+  } else {
+    document.getElementById('sp-date').value = todayISO();
+    document.getElementById('sp-time').value = '';
+    document.getElementById('sp-type').value = 'reel';
+    document.getElementById('sp-status').value = 'idea';
+    document.getElementById('sp-title').value = '';
+    document.getElementById('sp-note').value = '';
+  }
+  openModal('modal-social-schedule');
+}
+
+async function saveSocialPost() {
+  const err = document.getElementById('sp-err');
+  err.textContent = '';
+
+  const editId = document.getElementById('sp-edit-id').value;
+  const clientId = document.getElementById('sp-client-id').value || socialSelectedClientId;
+  const date = document.getElementById('sp-date').value;
+  const time = document.getElementById('sp-time').value;
+  const title = document.getElementById('sp-title').value.trim();
+  const platforms = Array.from(document.querySelectorAll('#sp-platforms input:checked')).map(cb => cb.value);
+
+  if (!date) { err.textContent = '⚠️ Date is required.'; return; }
+  if (!time) { err.textContent = '⚠️ Time is required.'; return; }
+  if (!title) { err.textContent = '⚠️ Title is required.'; return; }
+  if (!platforms.length) { err.textContent = '⚠️ Select at least one platform.'; return; }
+
+  const post = {
+    id: editId || uid(),
+    client_id: clientId,
+    scheduled_date: date,
+    scheduled_time: time,
+    content_type: document.getElementById('sp-type').value,
+    platforms,
+    title,
+    notes: document.getElementById('sp-note').value.trim(),
+    status: document.getElementById('sp-status').value,
+    order_index: editId ? (state.socialPosts.find(p=>p.id===editId)?.orderIndex || 0) : state.socialPosts.filter(p=>p.clientId===clientId).length,
+    created_at: editId ? (state.socialPosts.find(p=>p.id===editId)?.createdAt || nowISOString()) : nowISOString(),
+    user_email: state.user?.email || ''
+  };
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    const method = editId ? 'PATCH' : 'POST';
+    const url = editId ? `${supaUrl}/rest/v1/social_posts?id=eq.${editId}` : `${supaUrl}/rest/v1/social_posts`;
+    try {
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(post)
+      });
+    } catch(e) { console.error('Social post save error:', e); toast('Save failed'); return; }
+  }
+
+  const localPost = {
+    id: post.id, clientId: post.client_id, date: post.scheduled_date, time: post.scheduled_time,
+    contentType: post.content_type, platforms: post.platforms, title: post.title, notes: post.notes,
+    status: post.status, orderIndex: post.order_index, createdAt: post.created_at, userEmail: post.user_email
+  };
+
+  if (editId) {
+    const idx = state.socialPosts.findIndex(p => p.id === editId);
+    if (idx > -1) state.socialPosts[idx] = localPost;
+  } else {
+    state.socialPosts.push(localPost);
+  }
+
+  save();
+  closeModal('modal-social-schedule');
+  renderSocialPosts();
+  toast(editId ? 'Post updated' : 'Post scheduled!');
+}
+
+async function deleteSocialPost(id) {
+  if (!confirm('Delete this post?')) return;
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/social_posts?id=eq.${id}`, { method: 'DELETE', headers: { 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey } });
+    } catch(e) { console.error('Social post delete error:', e); }
+  }
+  state.socialPosts = state.socialPosts.filter(p => p.id !== id);
+  save();
+  renderSocialPosts();
+  toast('Post deleted');
+}
+
+// ── REMINDERS ──
+function checkSocialReminders() {
+  if (!state.user) return;
+  const now = nowIST();
+  const todayStr = todayISO();
+  const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+
+  state.socialPosts.forEach(p => {
+    if (p.status === 'posted') return;
+    if (p.date !== todayStr || !p.time) return;
+    const [ph, pm] = p.time.split(':').map(Number);
+    const targetMinutes = ph * 60 + pm;
+    if (nowMinutes < targetMinutes || nowMinutes > targetMinutes + 5) return;
+
+    const key = 'social_alerted_' + p.id + '_' + targetMinutes;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+
+    const client = state.leads.find(l => l.id === p.clientId);
+    showSocialReminderPopup(p, client);
+  });
+}
+
+function showSocialReminderPopup(post, client) {
+  const platformNames = (post.platforms || []).map(pl => PLATFORM_LABELS[pl] || pl).join(' and ');
+  const clientName = client?.name || 'Unknown Client';
+  const meta = CONTENT_TYPE_META[post.contentType] || CONTENT_TYPE_META.post;
+
+  const existing = document.getElementById('social-reminder-popup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'social-reminder-popup';
+  popup.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:99990;width:320px;background:var(--surface);border:1.5px solid var(--accent);border-radius:16px;box-shadow:0 8px 32px #00000080;padding:16px 18px;opacity:0;transform:translateY(20px);transition:all .25s cubic-bezier(.16,1,.3,1);font-family:var(--font-body);`;
+
+  popup.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--accent-soft);border:1px solid var(--accent)33;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">${meta.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:3px">Today · Post Reminder</div>
+        <div style="font-size:13.5px;color:var(--text);line-height:1.4;margin-bottom:8px">Today: Post '<strong>${esc(post.title)}</strong>' for <strong>${esc(clientName)}</strong> on ${esc(platformNames)}.</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="dismissSocialReminder()" style="flex:1;padding:6px 10px;background:var(--surface2);color:var(--text3);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font-body)">Dismiss</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(popup);
+  requestAnimationFrame(() => { popup.style.opacity = '1'; popup.style.transform = 'translateY(0)'; });
+  setTimeout(() => dismissSocialReminder(), 12000);
+}
+
+function dismissSocialReminder() {
+  const popup = document.getElementById('social-reminder-popup');
+  if (!popup) return;
+  popup.style.opacity = '0';
+  popup.style.transform = 'translateY(20px)';
+  setTimeout(() => popup.remove(), 250);
+}
+
+// ══════════════════════════════════════
+// ── END SOCIAL MEDIA MANAGER ──
+// ══════════════════════════════════════
+
 setInterval(checkCallReminders, 15000);
 setInterval(checkTaskReminders, 60000); // checks every 1 min
+setInterval(checkSocialReminders, 60000);
