@@ -270,6 +270,7 @@ async function fetchAllFromSupabase() {
         convertedAt: r.converted_at, followupDate: r.followup_date || '',
         timing: r.timing || '',
         socialGoals: r.social_goals || '',
+        isSocialClient: r.is_social_client || false,
        followupNote: r.followup_note || '', followupTime: r.followup_time || '',
       followupType: r.followup_type || '', followupAmount: r.followup_amount || 0,
       createdAt: r.created_at, statusChangedAt: r.status_changed_at || r.created_at,
@@ -2970,7 +2971,7 @@ function renderSocialClientSelect() {
   const sel = document.getElementById('social-client-select');
   if (!sel) return;
   const current = sel.value;
-  const clients = state.leads.filter(l => l.status !== 'suspended').sort((a,b) => a.name.localeCompare(b.name));
+  const clients = state.leads.filter(l => l.status !== 'suspended' && l.isSocialClient).sort((a,b) => a.name.localeCompare(b.name));
   sel.innerHTML = '<option value="">-- Choose a client --</option>' +
     clients.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
   if (current) sel.value = current;
@@ -3027,6 +3028,39 @@ async function saveClientGoals() {
   }
   save();
   toast('Goals saved');
+}
+
+function openAddSocialClientModal() {
+  const sel = document.getElementById('add-social-client-select');
+  const available = state.leads.filter(l => l.status !== 'suspended' && !l.isSocialClient).sort((a,b) => a.name.localeCompare(b.name));
+  sel.innerHTML = '<option value="">-- Choose a lead --</option>' +
+    available.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  openModal('modal-add-social-client');
+}
+
+async function confirmAddSocialClient() {
+  const id = document.getElementById('add-social-client-select').value;
+  if (!id) { toast('Please select a lead'); return; }
+
+  const lead = state.leads.find(l => l.id === id);
+  if (!lead) return;
+  lead.isSocialClient = true;
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ is_social_client: true })
+      });
+    } catch(e) { console.error('Add social client error:', e); toast('Failed to add client'); return; }
+  }
+
+  save();
+  closeModal('modal-add-social-client');
+  renderSocialClientSelect();
+  toast(`${lead.name} added as a Social Media client!`);
 }
 
 // ── VIEW SWITCH ──
