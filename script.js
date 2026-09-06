@@ -298,7 +298,7 @@ async function fetchAllFromSupabase() {
     'Authorization': 'Bearer ' + supaKey
   };
 
-  try {
+    try {
     const leadsRes = await fetch(`${supaUrl}/rest/v1/leads?order=created_at.desc`, { headers });
     if (leadsRes.ok) {
       const rows = await leadsRes.json();
@@ -313,7 +313,8 @@ async function fetchAllFromSupabase() {
        followupNote: r.followup_note || '', followupTime: r.followup_time || '',
       followupType: r.followup_type || '', followupAmount: r.followup_amount || 0,
       createdAt: r.created_at, statusChangedAt: r.status_changed_at || r.created_at,
-        userEmail: r.user_email, timing: r.timing || ''
+        userEmail: r.user_email, timing: r.timing || '',
+        unresponsiveFromStage: r.unresponsive_from_stage || null
       }));
     }
 
@@ -362,11 +363,12 @@ async function fetchAllFromSupabase() {
         state.calls = callRows.map(r => ({
           id: r.id, name: r.name, phone: r.phone || '', time: r.time || '',
           note: r.note || '', date: r.date, done: r.done || false,
-          createdAt: r.created_at, reminder_mins: r.reminder_mins || null
+          createdAt: r.created_at, reminder_mins: r.reminder_mins || null,
+          leadId: r.lead_id || null, outcome: r.outcome || null,
+          outcomeNote: r.outcome_note || '', unresponsiveFromStage: r.unresponsive_from_stage || null
         }));
       }
     }
-
     const socialRes = await fetch(`${supaUrl}/rest/v1/social_posts?order=scheduled_date.asc,scheduled_time.asc`, { headers });
     if (socialRes.ok) {
       const socialRows = await socialRes.json();
@@ -530,7 +532,7 @@ async function saveLogCall() {
       await fetch(`${supaUrl}/rest/v1/calls`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ id: call.id, name: call.name, phone: call.phone, time: call.time, date: call.date, done: false, created_at: call.createdAt, user_email: state.user?.email || '' })
+        body: JSON.stringify({ id: call.id, name: call.name, phone: call.phone, time: call.time, date: call.date, done: false, created_at: call.createdAt, user_email: state.user?.email || '', lead_id: call.leadId })
       });
     } catch(e) { console.error('Log call save error:', e); }
   }
