@@ -241,7 +241,7 @@ function showPage(id, btn) {
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashboard:'Dashboard', contacts:'Contacts', social:'Social Media Manager', settings:'Settings', action:'Action Required ⚡', funnel:'Conversion Funnel' };
+  const titles = { home:'Home', leads:'Leads', suspended:'Suspended Leads', dashboard:'Dashboard', contacts:'Contacts', social:'Social Media Manager', settings:'Settings', action:'Action Required ⚡', funnel:'Conversion Funnel', calllogs:'Call Logs' };
   document.getElementById('page-title').textContent = titles[id] || id;
   if (id === 'home') renderHome();
   if (id === 'dashboard') {
@@ -260,6 +260,7 @@ function showPage(id, btn) {
   if (id === 'action') renderActionPage();
   if (id === 'funnel') renderFunnelPage();
   if (id === 'contacts') renderContacts();
+  if (id === 'calllogs') renderCallLogs();
   if (id === 'social') initSocialPage();
   if (id === 'sales') renderSales();
   if (id === 'settings') loadProfileUI();
@@ -285,6 +286,7 @@ function closeSidebar() {
   overlay.classList.remove('show');
   overlay.style.display = 'none';
 }
+
 
 // ── SUPABASE SYNC ──
 async function fetchAllFromSupabase() {
@@ -427,6 +429,114 @@ function changeCallsDate(dir) {
   renderHome();
 }
 
+function renderCallLogs() {
+  const list = document.getElementById('calllogs-list');
+  if (!list) return;
+  const logged = state.calls.filter(c => c.done).sort((a, b) => (b.date + (b.time||'')).localeCompare(a.date + (a.time||'')));
+  if (!logged.length) {
+    list.innerHTML = `<div class="empty-state"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6z"/></svg><p>No calls logged yet</p></div>`;
+    return;
+  }
+  list.innerHTML = logged.map(c => `
+    <div class="call-item">
+      <div class="call-time">${c.date} ${c.time || ''}</div>
+      <div class="call-info">
+        <div class="call-name">${esc(c.name)}
+          ${c.outcome === 'fruitful' ? '<span class="outcome-pill outcome-fruitful">Fruitful</span>' : ''}
+          ${c.outcome === 'unresponsive' ? '<span class="outcome-pill outcome-unresponsive">Unresponsive</span>' : ''}
+          ${c.outcome === 'unresponsive' && c.unresponsiveFromStage ? `<span class="stage-tag">from ${esc(statusLabel(c.unresponsiveFromStage))}</span>` : ''}
+        </div>
+        <div class="call-note">${c.phone ? esc(c.phone) : ''}${c.outcomeNote ? ' · ' + esc(c.outcomeNote) : ''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function openLogCallModal() {
+  document.getElementById('logcall-name').value = '';
+  document.getElementById('logcall-phone').value = '';
+  document.getElementById('logcall-lead-id').value = '';
+
+  const nameInput = document.getElementById('logcall-name');
+  const existingDropdown = document.getElementById('logcall-name-dropdown');
+  if (existingDropdown) existingDropdown.remove();
+
+  const dropdown = document.createElement('div');
+  dropdown.id = 'logcall-name-dropdown';
+  dropdown.style.cssText = 'display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 8px 24px #00000080;z-index:9999;max-height:200px;overflow-y:auto;margin-top:4px';
+
+  let nameWrap = nameInput.parentNode;
+  if (!nameWrap.id || nameWrap.id !== 'logcall-name-wrap') {
+    const newWrap = document.createElement('div');
+    newWrap.id = 'logcall-name-wrap';
+    newWrap.style.cssText = 'position:relative';
+    nameInput.parentNode.insertBefore(newWrap, nameInput);
+    newWrap.appendChild(nameInput);
+    nameWrap = newWrap;
+  }
+  nameWrap.appendChild(dropdown);
+
+  nameInput.oninput = function() {
+    document.getElementById('logcall-lead-id').value = '';
+    document.getElementById('logcall-phone').value = '';
+    const q = this.value.toLowerCase().trim();
+    if (!q) { dropdown.style.display = 'none'; return; }
+    const matches = state.leads.filter(l => l.status !== 'suspended' && (l.name?.toLowerCase().includes(q) || l.phone?.includes(q))).slice(0, 6);
+    if (!matches.length) { dropdown.style.display = 'none'; return; }
+    dropdown.innerHTML = matches.map(l => `
+      <div onclick="fillLogCallFromLead('${l.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(l.name)}</div>
+        <div style="font-size:11.5px;color:var(--text3)">${l.phone || '—'}${l.city ? ' · ' + l.city : ''}</div>
+      </div>`).join('');
+    dropdown.style.display = '';
+  };
+
+  document.addEventListener('click', function closeDD(e) {
+    if (!nameWrap.contains(e.target)) { dropdown.style.display = 'none'; document.removeEventListener('click', closeDD); }
+  });
+
+  openModal('modal-logcall');
+}
+
+function fillLogCallFromLead(id) {
+  const l = state.leads.find(x => x.id === id);
+  if (!l) return;
+  document.getElementById('logcall-name').value = l.name || '';
+  document.getElementById('logcall-phone').value = l.phone || l.wapp || '';
+  document.getElementById('logcall-lead-id').value = l.id;
+  const dropdown = document.getElementById('logcall-name-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+}
+
+async function saveLogCall() {
+  const leadId = document.getElementById('logcall-lead-id').value;
+  const name = document.getElementById('logcall-name').value.trim();
+  const lead = state.leads.find(l => l.id === leadId) ||
+               state.leads.find(l => l.name?.toLowerCase().trim() === name.toLowerCase().trim());
+  if (!lead) { toast('Select a name from the list — only existing leads can be logged'); return; }
+
+  const call = {
+    id: uid(), name: lead.name, leadId: lead.id, phone: lead.phone || lead.wapp || '',
+    time: new Date().toTimeString().slice(0,5), date: todayISO(), note: '',
+    done: false, outcome: null, outcomeNote: '', unresponsiveFromStage: null,
+    createdAt: nowISOString()
+  };
+  state.calls.push(call);
+  save();
+  closeModal('modal-logcall');
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/calls`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ id: call.id, name: call.name, phone: call.phone, time: call.time, date: call.date, done: false, created_at: call.createdAt, user_email: state.user?.email || '' })
+      });
+    } catch(e) { console.error('Log call save error:', e); }
+  }
+  openOutcomeModal(call.id);   // immediately ask Fruitful / Unresponsive
+}
+
 function renderHome() {
   const activeLeads = state.leads.filter(l => l.status !== 'suspended');
   const now = new Date();
@@ -559,6 +669,7 @@ l.followupType === 'nudge' ? '🔔 Nudge' :
 '📅 Follow-up') 
     : statusLabel(l.status)}
 </span>
+        ${l.status === 'prospecting' && l.unresponsiveFromStage ? `<span class="stage-tag">from ${esc(statusLabel(l.unresponsiveFromStage))}</span>` : ''}
         ${l.status === 'followup' && l.followupNote ? `
           <span style="position:relative;display:inline-flex;align-items:center;margin-left:5px;vertical-align:middle" class="note-icon-wrap">
             <svg fill="none" stroke="var(--accent)" viewBox="0 0 24 24" style="width:13px;height:13px;cursor:pointer;flex-shrink:0" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
