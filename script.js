@@ -1022,14 +1022,81 @@ async function toggleTask(id) {
 async function toggleCall(id) {
   const c = state.calls.find(x => x.id === id);
   if (!c) return;
-  c.done = !c.done;
-  save(); renderHome();
+  if (!c.done) { openOutcomeModal(id); return; }   // ticking ON → ask outcome first
+  c.done = false; c.outcome = null; c.outcomeNote = ''; c.unresponsiveFromStage = null;
+  save(); renderHome(); renderCallLogs();
   const { supaUrl, supaKey } = state.settings;
   if (supaKey) {
     try {
-      await fetch(`${supaUrl}/rest/v1/calls?id=eq.${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' }, body: JSON.stringify({ done: c.done }) });
+      await fetch(`${supaUrl}/rest/v1/calls?id=eq.${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' }, body: JSON.stringify({ done: false, outcome: null, outcome_note: '', unresponsive_from_stage: null }) });
     } catch(e) { console.error('Call toggle error:', e); }
   }
+}
+
+let _outcomeCallId = null;
+
+function openOutcomeModal(id) {
+  _outcomeCallId = id;
+  document.getElementById('outcome-note').value = '';
+  document.getElementById('outcome-note-wrap').style.display = 'none';
+  openModal('modal-outcome');
+}
+
+function pickOutcome(kind) {
+  if (kind === 'unresponsive') { saveCallOutcome('unresponsive', ''); return; }
+  document.getElementById('outcome-note-wrap').style.display = '';
+}
+
+async function saveCallOutcome(kind, note) {
+  const c = state.calls.find(x => x.id === _outcomeCallId);
+  if (!c) return;
+  c.done = true;
+  c.outcome = kind;
+  c.outcomeNote = note || document.getElementById('outcome-note')?.value.trim() || '';
+
+  let fromStage = null;
+  if (kind === 'unresponsive') {
+    const lead = (c.leadId && state.leads.find(l => l.id === c.leadId)) ||
+                 state.leads.find(l => l.name?.toLowerCase().trim() === c.name?.toLowerCase().trim());
+    if (lead && lead.status !== 'converted') {
+      fromStage = lead.status;
+      lead.status = 'prospecting';
+      lead.unresponsiveFromStage = fromStage;
+      lead.statusChangedAt = nowISOString();
+      const { supaUrl, supaKey } = state.settings;
+      if (supaKey) {
+        try {
+          await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ status: 'prospecting', status_changed_at: lead.statusChangedAt, unresponsive_from_stage: fromStage })
+          });
+        } catch(e) { console.error('Lead auto-status error:', e); }
+      }
+    }
+    // if lead.status === 'converted' → do nothing, per spec
+  }
+  c.unresponsiveFromStage = fromStage;
+
+  save();
+  closeModal('modal-outcome');
+  renderHome(); renderLeads(); renderCallLogs();
+  toast(kind === 'unresponsive' ? 'Marked unresponsive' : 'Call logged as fruitful');
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/calls?id=eq.${c.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ done: true, outcome: c.outcome, outcome_note: c.outcomeNote, unresponsive_from_stage: c.unresponsiveFromStage })
+      });
+    } catch(e) { console.error('Call outcome save error:', e); }
+  }
+}
+
+function submitFruitfulNote() {
+  saveCallOutcome('fruitful', document.getElementById('outcome-note').value.trim());
 }
 
 async function deleteTask(id) {
@@ -1049,6 +1116,7 @@ let calState = { year: 0, month: 0, selected: '' };
 function openCallModal() {
   document.getElementById('call-name').value = '';
   document.getElementById('call-phone').value = '';
+  document.getElementById('call-lead-id').value = '';
 
   const nameInput = document.getElementById('call-name');
   const existingDropdown = document.getElementById('call-name-dropdown');
@@ -1107,6 +1175,7 @@ function fillCallFromLead(id) {
   if (!l) return;
   document.getElementById('call-name').value = l.name || '';
   document.getElementById('call-phone').value = l.phone || l.wapp || '';
+  document.getElementById('call-lead-id').value = l.id;
   const dropdown = document.getElementById('call-name-dropdown');
   if (dropdown) dropdown.style.display = 'none';
 }
@@ -1153,19 +1222,26 @@ function selectDay(iso) {
 }
 
 async function saveCall() {
-  const name = document.getElementById('call-name').value.trim();
+ const name = document.getElementById('call-name').value.trim();
   if (!name) { toast('Contact name required'); return; }
+  const leadIdField = document.getElementById('call-lead-id').value;
+  const matchedLead = state.leads.find(l => l.id === leadIdField) ||
+                       state.leads.find(l => l.name?.toLowerCase().trim() === name.toLowerCase().trim());
+  if (!matchedLead) { toast('No matching lead found — select a name from the list'); return; }
+  document.getElementById('call-lead-id').value = matchedLead.id;
   const date = document.getElementById('call-date').value;
   if (!date) { toast('Please select a date'); return; }
 
   const reminderMins = document.getElementById('call-reminder-mins').value;
-  const call = {
+const call = {
     id: uid(), name,
+    leadId: document.getElementById('call-lead-id').value || null,
     phone: document.getElementById('call-phone').value.trim(),
     time: document.getElementById('call-time').value,
     note: document.getElementById('call-note').value.trim(),
     date, reminder_mins: reminderMins ? parseInt(reminderMins) : null,
-    done: false, createdAt: nowISOString()
+    done: false, outcome: null, outcomeNote: '', unresponsiveFromStage: null,
+    createdAt: nowISOString()
   };
 
   const { supaUrl, supaKey } = state.settings;
