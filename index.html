@@ -940,6 +940,7 @@
       <div class="form-group">
         <label>Contact Name *</label>
         <input type="text" id="call-name" placeholder="Who is this call with?">
+         <input type="hidden" id="call-lead-id"
       </div>
     </div>
     <div class="form-row">
@@ -992,6 +993,26 @@
   </div>
 </div>
 
+
+<div class="modal-overlay" id="modal-outcome">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-title">
+      Call Outcome
+      <button class="modal-close" onclick="closeModal('modal-outcome')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px">
+      <button class="btn btn-primary" style="flex:1;background:#22c55e" onclick="pickOutcome('fruitful')">Fruitful</button>
+      <button class="btn btn-ghost" style="flex:1;border-color:#f59e0b;color:#f59e0b" onclick="pickOutcome('unresponsive')">Unresponsive</button>
+    </div>
+    <div id="outcome-note-wrap" style="display:none;margin-top:14px">
+      <div class="form-section-label">Note / message</div>
+      <textarea id="outcome-note" rows="3" class="form-input" placeholder="What was discussed..."></textarea>
+      <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="submitFruitfulNote()">Save Note</button>
+    </div>
+  </div>
+</div>
 <!-- CONTACT MODAL -->
 <div class="modal-overlay" id="modal-contact">
   <div class="modal">
