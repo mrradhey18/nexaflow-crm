@@ -190,6 +190,8 @@
     </div>
   </div>
 
+
+  
   <!-- CONTENT -->
   <div id="content">
 
@@ -272,6 +274,10 @@
           <div id="calls-list"></div>
         </div>
       </div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:2px;justify-content:center" onclick="showPage('calllogs')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6z"/></svg>
+        Call Logs
+      </button>
     </div>
 
     <!-- LEADS PAGE -->
@@ -502,6 +508,7 @@
       </div>
     </div>
 
+
     <!-- CONTACTS PAGE -->
     <div class="page" id="page-contacts" style="width:100%;padding-top:0">
       <div class="section" style="width:100%;margin-top:0">
@@ -514,8 +521,29 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Contact
           </button>
+          <button class="btn btn-ghost" onclick="showPage('calllogs')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6z"/></svg>
+            Call Logs
+          </button>
         </div>
         <div class="contacts-grid" id="contacts-grid"></div>
+      </div>
+    </div>
+
+        <!-- CALL LOGS PAGE -->
+    <div class="page" id="page-calllogs" style="width:100%">
+      <div class="section" style="width:100%">
+        <div class="section-head">
+          <div class="section-title">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6z"/></svg>
+            Call Logs
+          </div>
+          <button class="btn btn-primary" onclick="openLogCallModal()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Call
+          </button>
+        </div>
+        <div id="calllogs-list"></div>
       </div>
     </div>
 
@@ -1013,6 +1041,35 @@
     </div>
   </div>
 </div>
+
+<div class="modal-overlay" id="modal-logcall">
+  <div class="modal">
+    <div class="modal-title">
+      Log a Call
+      <button class="modal-close" onclick="closeModal('modal-logcall')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Contact Name * <span style="font-weight:400;color:var(--text3)">(must be an existing lead)</span></label>
+        <input type="text" id="logcall-name" placeholder="Start typing a lead's name...">
+        <input type="hidden" id="logcall-lead-id">
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="tel" id="logcall-phone" placeholder="+91XXXXX XXXXX" readonly>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-logcall')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLogCall()">Log Call</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONTACT MODAL -->
 <div class="modal-overlay" id="modal-contact">
   <div class="modal">
