@@ -26,6 +26,14 @@ let state = {
   settings: { supaUrl: 'https://fkawawrnhkmbztfnnils.supabase.co', supaKey: '', logo: '' }
 };
 
+function guardSalesAccess(btn) {
+  if (isAdmin()) { showPage('sales', btn); return; }
+  window.__pendingSalesBtn = btn;
+  document.getElementById('sales-pw-input').value = '';
+  document.getElementById('sales-pw-err').textContent = '';
+  openModal('modal-sales-pw');
+}
+
 function isAdmin() {
   return !!(state.user && state.user.role === 'admin');
 }
