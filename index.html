@@ -106,7 +106,7 @@
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg>
       Funnel
     </button>
-    <button class="nav-item" onclick="showPage('sales',this)">
+    <button class="nav-item" onclick="guardSalesAccess(this)">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
       Sales
     </button>
@@ -1334,6 +1334,23 @@
       <button class="btn btn-ghost" onclick="closeModal('modal-convert')">Cancel</button>
       <button class="btn btn-primary" onclick="confirmConvert()" style="background:var(--green)">✓ Confirm Convert</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-sales-pw">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-title">
+      🔒 Admin Access Required
+      <button class="modal-close" onclick="closeModal('modal-sales-pw')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Enter the admin password to view Sales.</div>
+    <input type="password" id="sales-pw-input" placeholder="Password"
+      onkeydown="if(event.key==='Enter')checkSalesPassword()"
+      style="width:100%;padding:10px 12px;font-size:14px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text);box-sizing:border-box;margin-bottom:8px">
+    <div id="sales-pw-err" style="color:#ef4444;font-size:12px;margin-bottom:12px;min-height:14px"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="checkSalesPassword()">Unlock</button>
   </div>
 </div>
 <script src="script.js"></script>
