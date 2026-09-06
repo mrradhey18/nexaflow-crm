@@ -498,6 +498,17 @@ tr:hover td { background: var(--surface2); }
 .s-wapp { background: #22c55e14; color: #4ade80; }
 .s-call { background: #3b82f614; color: #60a5fa; }
 .s-prospecting { background: #f59e0b14; color: #fbbf24; }
+.stage-tag {
+  display: inline-block; margin-left: 5px; font-size: 10px; font-weight: 600;
+  padding: 1px 7px; border-radius: 20px; background: #f59e0b1f; color: #f59e0b;
+  white-space: nowrap; vertical-align: middle;
+}
+.outcome-pill {
+  display: inline-block; margin-left: 5px; font-size: 10px; font-weight: 700;
+  padding: 1px 7px; border-radius: 20px; vertical-align: middle;
+}
+.outcome-fruitful { background: #22c55e1f; color: #22c55e; }
+.outcome-unresponsive { background: #f59e0b1f; color: #f59e0b; }
 .s-payment { background: #8b5cf614; color: #a78bfa; }
 .s-followup { background: #06b6d414; color: #22d3ee; }
 .s-converted { background: #22c55e14; color: #22c55e; }
