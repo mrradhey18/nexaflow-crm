@@ -26,6 +26,31 @@ let state = {
   settings: { supaUrl: 'https://fkawawrnhkmbztfnnils.supabase.co', supaKey: '', logo: '' }
 };
 
+async function checkSalesPassword() {
+  const val = document.getElementById('sales-pw-input').value;
+  const { supaUrl, supaKey } = state.settings;
+  try {
+    const res = await fetch(`${supaUrl}/rest/v1/rpc/check_sales_password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supaKey,
+        'Authorization': 'Bearer ' + supaKey
+      },
+      body: JSON.stringify({ guess: val })
+    });
+    const isCorrect = await res.json();
+    if (isCorrect === true) {
+      closeModal('modal-sales-pw');
+      showPage('sales', window.__pendingSalesBtn);
+    } else {
+      document.getElementById('sales-pw-err').textContent = 'Incorrect password.';
+    }
+  } catch (e) {
+    document.getElementById('sales-pw-err').textContent = 'Connection error.';
+  }
+}
+
 // ── PERSIST ──
 function save() {
   if (!Array.isArray(state.sales)) state.sales = [];
@@ -163,6 +188,7 @@ function doLogin() {
       if (Array.isArray(rows) && rows.length > 0) {
         if (rows[0].display_name) state.user.name = rows[0].display_name;
         if (rows[0].profile_img) state.user.profileImg = rows[0].profile_img;
+        state.user.role = rows[0].role || 'staff';
         save();
       }
     } catch(e) { console.log('Profile fetch error:', e); }
@@ -349,6 +375,7 @@ async function fetchAllFromSupabase() {
         if (state.user) {
           if (p.display_name) state.user.name = p.display_name;
           if (p.profile_img) state.user.profileImg = p.profile_img;
+          state.user.role = p.role || 'staff';
           save();
         }
       }
@@ -409,11 +436,11 @@ function renderHome() {
   });
   const qTotal = qSales.reduce((s, x) => s + (x.amount || 0), 0);
 
-  document.getElementById('stat-total').textContent = '₹' + fmtNum(qTotal);
+  document.getElementById('stat-total').textContent = isAdmin() ? '₹' + fmtNum(qTotal) : '🔒';
   document.getElementById('stat-quarter-label').textContent = qLabels[currentQ] + ' Sales';
-  document.getElementById('stat-quarter-sub').textContent = qSales.length + ' deal' + (qSales.length !== 1 ? 's' : '') + ' this quarter';
-  document.getElementById('stat-month').textContent = '₹' + fmtNum(monthTotal);
-  document.getElementById('stat-month-sub').textContent = monthSales.length + ' deal' + (monthSales.length !== 1 ? 's' : '');
+  document.getElementById('stat-quarter-sub').textContent = isAdmin() ? (qSales.length + ' deal' + (qSales.length !== 1 ? 's' : '') + ' this quarter') : 'Admin only';
+  document.getElementById('stat-month').textContent = isAdmin() ? '₹' + fmtNum(monthTotal) : '🔒';
+  document.getElementById('stat-month-sub').textContent = isAdmin() ? (monthSales.length + ' deal' + (monthSales.length !== 1 ? 's' : '')) : 'Admin only';
   document.getElementById('stat-leads').textContent = activeLeads.length;
 
   const today = homeViewDate;
