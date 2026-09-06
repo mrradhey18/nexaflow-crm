@@ -26,6 +26,9 @@ let state = {
   settings: { supaUrl: 'https://fkawawrnhkmbztfnnils.supabase.co', supaKey: '', logo: '' }
 };
 
+function isAdmin() {
+  return !!(state.user && state.user.role === 'admin');
+}
 async function checkSalesPassword() {
   const val = document.getElementById('sales-pw-input').value;
   const { supaUrl, supaKey } = state.settings;
