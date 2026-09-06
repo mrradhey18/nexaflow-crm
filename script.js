@@ -3470,3 +3470,9 @@ function dismissSocialReminder() {
 setInterval(checkCallReminders, 15000);
 setInterval(checkTaskReminders, 60000); // checks every 1 min
 setInterval(checkSocialReminders, 60000);
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
