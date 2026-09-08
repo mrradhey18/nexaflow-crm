@@ -365,7 +365,8 @@ async function fetchAllFromSupabase() {
           note: r.note || '', date: r.date, done: r.done || false,
           createdAt: r.created_at, reminder_mins: r.reminder_mins || null,
           leadId: r.lead_id || null, outcome: r.outcome || null,
-          outcomeNote: r.outcome_note || '', unresponsiveFromStage: r.unresponsive_from_stage || null
+          outcomeNote: r.outcome_note || '', unresponsiveFromStage: r.unresponsive_from_stage || null,
+          actionType: r.action_type || null
         }));
       }
     }
@@ -444,7 +445,7 @@ function renderCallLogs() {
       <div class="call-time">${c.date} ${c.time || ''}</div>
       <div class="call-info">
         <div class="call-name">${esc(c.name)}
-          ${c.outcome === 'fruitful' ? '<span class="outcome-pill outcome-fruitful">Fruitful</span>' : ''}
+          ${c.outcome === 'action' ? `<span class="outcome-pill outcome-fruitful">${c.actionType ? statusLabel(c.actionType) : 'Action'}</span>` : ''}
           ${c.outcome === 'unresponsive' ? '<span class="outcome-pill outcome-unresponsive">Unresponsive</span>' : ''}
           ${c.outcome === 'unresponsive' && c.unresponsiveFromStage ? `<span class="stage-tag">from ${esc(statusLabel(c.unresponsiveFromStage))}</span>` : ''}
         </div>
@@ -1155,9 +1156,25 @@ function openOutcomeModal(id) {
   openModal('modal-outcome');
 }
 
+let _fqFromCallId = null;   // tracks that followup-quick was opened FROM a call outcome
+
 function pickOutcome(kind) {
   if (kind === 'unresponsive') { saveCallOutcome('unresponsive', ''); return; }
-  document.getElementById('outcome-note-wrap').style.display = '';
+  if (kind === 'action') { openActionForCall(); return; }
+}
+
+function openActionForCall() {
+  const c = state.calls.find(x => x.id === _outcomeCallId);
+  if (!c) return;
+  const lead = (c.leadId && state.leads.find(l => l.id === c.leadId)) ||
+               state.leads.find(l => l.name?.toLowerCase().trim() === c.name?.toLowerCase().trim());
+  if (!lead) {
+    toast('No matching lead found for this call — cannot set an action');
+    return;
+  }
+  closeModal('modal-outcome');
+  _fqFromCallId = c.id;
+  openFollowupQuick(lead.id, lead.status);
 }
 
 async function saveCallOutcome(kind, note) {
@@ -2234,6 +2251,7 @@ function cancelFollowupQuick() {
   if (lead && _fqOldStatus) lead.status = _fqOldStatus;
   closeModal('modal-followup-quick');
   _fqLeadId = null; _fqOldStatus = null;
+  _fqFromCallId = null;   // call stays untouched — user can tick it again later
   renderLeads();
 }
 
@@ -2335,8 +2353,31 @@ lead.status = _fqType === 'payment' ? 'payment' : 'followup';
 
   save(); syncAndRender();
 
-  const typeLabels = { call: '📞 Call', payment: '💳 Payment', gbp: '📍 GBP Report' };
-  toast(`${typeLabels[_fqType]} follow-up set for ${date} at ${time}`);
+  const typeLabels = { call: '📞 Call', payment: '💳 Payment', gbp: '📍 GBP Report', nudge: '🔔 Nudge' };
+  toast(`${typeLabels[_fqType] || 'Follow-up'} set for ${date} at ${time}`);
+
+  // If this follow-up was set from a call's outcome ("Action" button), close the loop on that call
+  if (_fqFromCallId) {
+    const outcomeCall = state.calls.find(x => x.id === _fqFromCallId);
+    if (outcomeCall) {
+      outcomeCall.done = true;
+      outcomeCall.outcome = 'action';
+      outcomeCall.outcomeNote = note;
+      outcomeCall.actionType = lead.followupType;
+      save(); renderHome(); renderCallLogs();
+      if (supaKey) {
+        try {
+          await fetch(`${supaUrl}/rest/v1/calls?id=eq.${outcomeCall.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ done: true, outcome: 'action', outcome_note: note, action_type: lead.followupType })
+          });
+        } catch(e) { console.error('Call action save error:', e); }
+      }
+    }
+    _fqFromCallId = null;
+  }
+
   _fqLeadId = null; _fqOldStatus = null; _fqType = null; _fqCallSubtype = null;
 }
 
