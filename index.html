@@ -1303,7 +1303,7 @@
 
       <div style="margin-bottom:16px">
         <label class="form-label">Follow-up Type</label>
-        <div style="display:flex;gap:8px;margin-top:6px">
+        <div display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
           <button class="fq-type-btn" data-type="call" onclick="selectFqType('call')"
             style="flex:1;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s">
             📞 Call
@@ -1320,10 +1320,16 @@
   style="flex:1;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s">
   🔔 Nudge
 </button>
+          <button class="fq-type-btn" data-type="other" onclick="selectFqType('other')"
+            style="flex:1;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .18s">
+            🗒️ Other
+          </button>
         </div>
       </div>
 
       <div id="fq-fields" style="display:none">
+        <div id="fq-datetime-wrap">
+        <div id="fq-datetime-wrap">
         <div class="form-row">
           <label class="form-label">Date</label>
           <input type="date" id="fq-date" class="form-input">
@@ -1331,6 +1337,8 @@
         <div class="form-row">
           <label class="form-label">Time</label>
           <input type="time" id="fq-time" class="form-input">
+        </div>
+        </div>
         </div>
         <div class="form-row" id="fq-amount-row" style="display:none">
           <label class="form-label">Amount Due (₹)</label>
@@ -1350,7 +1358,7 @@
   </div>
 </div>
         <div class="form-row">
-          <label class="form-label">Note</label>
+          <label class="form-label" id="fq-note-label">Note</label>
           <textarea id="fq-note" class="form-input" rows="2" placeholder="Add a note..."></textarea>
         </div>
         <div id="fq-err" style="color:var(--red);font-size:12px;margin-top:4px"></div>
