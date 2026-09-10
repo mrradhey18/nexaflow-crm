@@ -2261,6 +2261,34 @@ async function confirmFollowupQuick() {
   const note = document.getElementById('fq-note').value.trim();
   const err = document.getElementById('fq-err');
 if (!_fqType) { err.textContent = '⚠️ Please select a follow-up type.'; return; }
+if (_fqType === 'other') {
+  if (!note) { err.textContent = '⚠️ Please add a note on what this call was for.'; return; }
+  closeModal('modal-followup-quick');
+  if (_fqFromCallId) {
+    const outcomeCall = state.calls.find(x => x.id === _fqFromCallId);
+    if (outcomeCall) {
+      outcomeCall.done = true;
+      outcomeCall.outcome = 'action';
+      outcomeCall.outcomeNote = note;
+      outcomeCall.actionType = 'other';
+      save(); renderHome(); renderCallLogs();
+      const { supaUrl, supaKey } = state.settings;
+      if (supaKey) {
+        try {
+          await fetch(`${supaUrl}/rest/v1/calls?id=eq.${outcomeCall.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ done: true, outcome: 'action', outcome_note: note, action_type: 'other' })
+          });
+        } catch(e) { console.error('Call action save error:', e); }
+      }
+    }
+    _fqFromCallId = null;
+  }
+  toast('🗒️ Logged: ' + note.slice(0, 40) + (note.length > 40 ? '…' : ''));
+  _fqLeadId = null; _fqOldStatus = null; _fqType = null; _fqCallSubtype = null;
+  return;
+}
 if (_fqType === 'call' && !_fqCallSubtype) { err.textContent = '⚠️ Please select a call type.'; return; }
 if (!date) { err.textContent = '⚠️ Date is required.'; return; }
   if (!time) { err.textContent = '⚠️ Time is required.'; return; }
@@ -2353,7 +2381,7 @@ lead.status = _fqType === 'payment' ? 'payment' : 'followup';
 
   save(); syncAndRender();
 
-  const typeLabels = { call: '📞 Call', payment: '💳 Payment', gbp: '📍 GBP Report', nudge: '🔔 Nudge' };
+  const typeLabels = { call: '📞 Call', payment: '💳 Payment', gbp: '📍 GBP Report', nudge: '🔔 Nudge', other: '🗒️ Other' };
   toast(`${typeLabels[_fqType] || 'Follow-up'} set for ${date} at ${time}`);
 
   // If this follow-up was set from a call's outcome ("Action" button), close the loop on that call
@@ -2394,9 +2422,11 @@ function selectFqType(type) {
     b.style.background = isSelected ? 'var(--accent-soft)' : 'var(--surface2)';
     b.style.color = isSelected ? 'var(--accent)' : 'var(--text2)';
   });
-document.getElementById('fq-fields').style.display = '';
-document.getElementById('fq-amount-row').style.display = type === 'payment' ? '' : 'none';
-document.getElementById('fq-call-subtype-row').style.display = type === 'call' ? '' : 'none';
+  document.getElementById('fq-fields').style.display = '';
+  document.getElementById('fq-amount-row').style.display = type === 'payment' ? '' : 'none';
+  document.getElementById('fq-call-subtype-row').style.display = type === 'call' ? '' : 'none';
+  document.getElementById('fq-datetime-wrap').style.display = type === 'other' ? 'none' : '';
+  document.getElementById('fq-note-label').textContent = type === 'other' ? 'What was this call about? *' : 'Note';
 }
 
 function selectFqSubtype(sub) {
