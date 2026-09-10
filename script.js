@@ -2931,29 +2931,33 @@ if (nowMinutes < targetMinutes || nowMinutes > targetMinutes + catchWindow) retu
 }
 
 // ── TASK REMINDER ──
+const TASK_REMINDER_SLOTS = {
+  high:   [9 * 60, 14 * 60, 19 * 60],   // 9AM, 2PM, 7PM
+  normal: [9 * 60, 16 * 60],            // 9AM, 4PM
+  low:    [9 * 60]                      // 9AM
+};
+
 function checkTaskReminders() {
   if (!state.user) return;
   const now = nowIST();
-  const hours = now.getUTCHours();
-  const minutes = now.getUTCMinutes();
-  
-  // Only between 9AM and 9PM IST (IST = UTC+5:30, so 9AM IST = 3:30 UTC, 9PM IST = 15:30 UTC)
-  const totalMinsUTC = hours * 60 + minutes;
-  const istMins = totalMinsUTC + 330; // +5:30
-  const istHour = Math.floor((istMins % 1440) / 60);
-  if (istHour < 9 || istHour >= 21) return;
+  const totalMinsUTC = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const istMins = (totalMinsUTC + 330) % 1440; // +5:30, wrapped to day
+  const istHour = Math.floor(istMins / 60);
+  if (istHour < 9 || istHour >= 20) return; // 9AM–8PM window
 
   const today = todayISO();
   state.tasks.forEach(t => {
     if (t.done) return;
     if (t.date && t.date !== today) return;
 
-    const intervalMins = t.priority === 'high' ? 30 : t.priority === 'low' ? 120 : 60;
-    const key = `task_reminded_${t.id}_${Math.floor((hours * 60 + minutes) / intervalMins)}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, '1');
-
-    showTaskReminderPopup(t);
+    const slots = TASK_REMINDER_SLOTS[t.priority] || TASK_REMINDER_SLOTS.normal;
+    slots.forEach(slotMin => {
+      if (istMins < slotMin || istMins > slotMin + 3) return; // 3-min firing window
+      const key = `task_reminded_${t.id}_${slotMin}`;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+      showTaskReminderPopup(t);
+    });
   });
 }
 
@@ -3639,19 +3643,51 @@ function checkSocialReminders() {
   const now = nowIST();
   const todayStr = todayISO();
   const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const nowMs = Date.now();
+
+  const STAGES = [
+    { label: '24 hours',  ms: 24 * 60 * 60 * 1000, tol: 5 * 60 * 1000 },
+    { label: '10 hours',  ms: 10 * 60 * 60 * 1000, tol: 5 * 60 * 1000 },
+    { label: '5 minutes', ms: 5 * 60 * 1000,        tol: 90 * 1000 }
+  ];
 
   state.socialPosts.forEach(p => {
-    if (p.status === 'posted') return;
-    if (p.date !== todayStr || !p.time) return;
+    if (p.status === 'posted' || !p.date || !p.time) return;
+    const postDateTime = new Date(p.date + 'T' + p.time + ':00+05:30').getTime();
+    const client = state.leads.find(l => l.id === p.clientId);
+
+    if (!isNaN(postDateTime)) {
+      STAGES.forEach(stage => {
+        const diff = postDateTime - nowMs - stage.ms;
+        if (Math.abs(diff) > stage.tol) return;
+        const key = 'social_stage_' + p.id + '_' + stage.label.replace(' ', '');
+        if (sessionStorage.getItem(key)) return;
+        sessionStorage.setItem(key, '1');
+        sendTelegramNotification(
+          '📱 <b>Post Reminder — ' + stage.label + ' left</b>\n\n' +
+          '👤 Client: <b>' + (client?.name || 'Unknown') + '</b>\n' +
+          '📝 ' + p.title + '\n' +
+          '🕒 Scheduled: ' + p.date + ' at ' + p.time
+        );
+        showSocialReminderPopup(p, client);
+      });
+    }
+
+    // Posting-time alert (unchanged from before)
+     if (p.date !== todayStr) return;
     const [ph, pm] = p.time.split(':').map(Number);
     const targetMinutes = ph * 60 + pm;
     if (nowMinutes < targetMinutes || nowMinutes > targetMinutes + 5) return;
-
     const key = 'social_alerted_' + p.id + '_' + targetMinutes;
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
-
-    const client = state.leads.find(l => l.id === p.clientId);
+    const platformNames = (p.platforms || []).map(pl => PLATFORM_LABELS[pl] || pl).join(' and ');
+    sendTelegramNotification(
+      '🚀 <b>Post Time — Go Live Now!</b>\n\n' +
+      '👤 Client: <b>' + (client?.name || 'Unknown') + '</b>\n' +
+      '📝 ' + p.title + '\n' +
+      '📱 Platform: ' + (platformNames || '—')
+    );
     showSocialReminderPopup(p, client);
   });
 }
