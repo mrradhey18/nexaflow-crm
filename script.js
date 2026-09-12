@@ -2454,6 +2454,8 @@ document.addEventListener('click', e => {
 document.addEventListener('scroll', closeStatusMenu, true);
 
 document.addEventListener('click', e => {
+  const searchBtn = document.getElementById('mobile-search-btn');
+  if (searchBtn && searchBtn.contains(e.target)) return;
   if (!document.getElementById('search-wrap')?.contains(e.target)) closeSearch();
 });
 
