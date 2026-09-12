@@ -1032,6 +1032,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 @media (max-width: 600px) {
     #pie-stats { grid-template-columns: 1fr !important; }
     #page-home canvas#leads-pie { width: 140px !important; height: 140px !important; }
+    #page-home #pie-chart-wrap { width: 140px !important; height: 140px !important; }
 }
 
 #pie-stats > div { will-change: transform; backface-visibility: hidden; }
@@ -1336,7 +1337,8 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     #pie-stats { grid-template-columns: 1fr 1fr !important; width: 100% !important; display: grid !important; gap: 8px !important; padding: 0 4px !important; }
     canvas#leads-pie { width: 160px !important; height: 160px !important; }
     #pie-center #pie-total { font-size: 18px !important; }
-#pie-center div:last-child { font-size: 9px !important; margin-top: 0 !important; }
+    #pie-center div:last-child { font-size: 9px !important; margin-top: 0 !important; }
+    #pie-center div:last-child { font-size: 9px !important; margin-top: 0 !important; }
     #lead-chart-legend { display: none !important; }
 
     .grid-2, .grid-3 { grid-template-columns: 1fr; }
