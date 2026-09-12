@@ -539,7 +539,7 @@ tr:hover td { background: var(--surface2); }
     background: transparent; color: var(--text3);
     transition: all .18s;
 }
-
+#mobile-search-btn { display: none; }
 .icon-btn:hover { background: var(--surface2); color: var(--text); }
 .icon-btn svg { width: 13px; height: 13px; stroke-width: 1.8; }
 
@@ -1285,7 +1285,28 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     #sidebar-overlay.show { display: block; }
 
     #topbar { padding: 0 10px; gap: 6px; height: 52px; }
-    #search-wrap { display: none; }
+        #search-wrap { display: none; }
+    #search-wrap.mobile-search-active {
+        display: block !important;
+        position: fixed;
+        top: 52px;
+        left: 0;
+        right: 0;
+        margin: 0;
+        padding: 10px 12px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        z-index: 998;
+    }
+    #search-wrap.mobile-search-active #global-search {
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+    #search-wrap.mobile-search-active #search-dropdown {
+        width: 100% !important;
+        left: 0;
+    }
+    #mobile-search-btn { display: flex; }
     .db-status { display: none; }
     #theme-toggle { width: 30px !important; height: 30px !important; }
     #followup-bell { width: 30px !important; height: 30px !important; }
