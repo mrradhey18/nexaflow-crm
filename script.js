@@ -2459,7 +2459,15 @@ document.addEventListener('click', e => {
 
 // ── GLOBAL SEARCH ──
 let searchTimeout = null;
-
+function toggleMobileSearch() {
+  const wrap = document.getElementById('search-wrap');
+  if (wrap.classList.contains('mobile-search-active')) {
+    closeSearch();
+  } else {
+    wrap.classList.add('mobile-search-active');
+    setTimeout(() => document.getElementById('global-search').focus(), 50);
+  }
+}
 function onSearch(val) {
   clearTimeout(searchTimeout);
   if (!val.trim()) { closeSearch(); return; }
@@ -2536,7 +2544,7 @@ function searchGoToContact() {
   showPage('contacts', btn);
 }
 
-function closeSearch() { document.getElementById('search-dropdown').style.display = 'none'; }
+function closeSearch() {   document.getElementById('search-dropdown').style.display = 'none';   document.getElementById('search-wrap').classList.remove('mobile-search-active'); }
 
 // ── THEME ──
 function toggleTheme() {
