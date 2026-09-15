@@ -818,11 +818,21 @@
         <input type="date" id="lead-followup-date">
       </div>
     </div>
-    <div id="sale-amount-row" class="form-row full sale-highlight" style="display:none;margin-top:14px;padding:14px;border-radius:var(--radius-sm);border:1px solid var(--green)">
+     <div id="sale-amount-row" class="form-row full sale-highlight" style="display:none;margin-top:14px;padding:14px;border-radius:var(--radius-sm);border:1px solid var(--green)">
       <div class="form-group">
         <label>💰 Sale Amount (₹)</label>
         <input type="number" id="lead-sale" placeholder="Enter deal value..." min="0">
       </div>
+    </div>
+    <div id="payment-reminder-row" class="form-row full" style="display:none;margin-top:14px;padding:14px;border-radius:var(--radius-sm);border:1px solid var(--green)">
+      <div class="form-group">
+        <label>💳 Payment Reminder Date</label>
+        <input type="date" id="lead-payment-reminder">
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--text2);cursor:pointer">
+        <input type="checkbox" id="lead-payment-recurring" style="width:16px;height:16px">
+        Repeat monthly
+      </label>
     </div>
     <div style="margin-top:16px">
       <div class="form-section-label">Lead Information</div>
@@ -972,7 +982,7 @@
       <div class="form-group">
         <label>Contact Name *</label>
         <input type="text" id="call-name" placeholder="Who is this call with?">
-         <input type="hidden" id="call-lead-id"
+         <input type="hidden" id="call-lead-id">
       </div>
     </div>
     <div class="form-row">
@@ -1419,11 +1429,21 @@
         <input type="text" id="convert-date" readonly
           style="width:100%;padding:10px 12px;font-size:13px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface3);color:var(--text2);cursor:not-allowed;box-sizing:border-box">
       </div>
-      <div>
+         <div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;display:block">🧾 Transaction ID</label>
         <input type="text" id="convert-txn" placeholder="UTR / Txn ID (optional)"
           style="width:100%;padding:10px 12px;font-size:13px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text);box-sizing:border-box">
       </div>
+    </div>
+     <div style="margin-bottom:16px">
+      <label style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;display:block">💳 Payment Reminder Date</label>
+      <input type="date" id="convert-payment-reminder"
+        style="width:100%;padding:10px 12px;font-size:13px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text);box-sizing:border-box">
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Defaults to today — change if the next payment is due later</div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--text2);cursor:pointer">
+        <input type="checkbox" id="convert-payment-recurring" checked style="width:16px;height:16px">
+        Repeat monthly (auto-reschedule after each payment)
+      </label>
     </div>
     <div id="convert-err" style="color:var(--red);font-size:12px;margin-bottom:8px"></div>
     <div class="modal-actions">
