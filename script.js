@@ -314,7 +314,9 @@ async function fetchAllFromSupabase() {
       followupType: r.followup_type || '', followupAmount: r.followup_amount || 0,
       createdAt: r.created_at, statusChangedAt: r.status_changed_at || r.created_at,
         userEmail: r.user_email, timing: r.timing || '',
-        unresponsiveFromStage: r.unresponsive_from_stage || null
+        unresponsiveFromStage: r.unresponsive_from_stage || null,
+         paymentReminderDate: r.payment_reminder_date || null,
+        paymentRecurring: r.payment_recurring !== false
       }));
     }
 
@@ -899,8 +901,13 @@ function openLeadModal(id) {
     document.getElementById('lead-note').value = l.note || '';
     document.getElementById('lead-timing').value = l.timing || '';
     document.getElementById('lead-sale').value = l.saleAmount || '';
-    setLeadStatus(l.status || 'not_escalated');
-    if (l.status === 'converted') document.getElementById('sale-amount-row').style.display = '';
+ setLeadStatus(l.status || 'not_escalated');
+   if (l.status === 'converted') {
+      document.getElementById('sale-amount-row').style.display = '';
+      document.getElementById('payment-reminder-row').style.display = '';
+      document.getElementById('lead-payment-reminder').value = l.paymentReminderDate || '';
+      document.getElementById('lead-payment-recurring').checked = l.paymentRecurring !== false;
+    }
     if (l.status === 'followup') {
       document.getElementById('followup-date-row').style.display = '';
       document.getElementById('lead-followup-date').value = l.followupDate || '';
@@ -973,6 +980,8 @@ async function saveLead(createAnother = false) {
     status,
     sale_amount: status === 'converted' ? parseFloat(document.getElementById('lead-sale').value) || 0 : 0,
     converted_at: status === 'converted' ? nowISOString() : null,
+    payment_reminder_date: status === 'converted' ? (document.getElementById('lead-payment-reminder').value || existingLead?.paymentReminderDate || null) : null,
+    payment_recurring: status === 'converted' ? document.getElementById('lead-payment-recurring').checked : (existingLead?.paymentRecurring ?? true),
     status_changed_at: statusActuallyChanged ? nowISOString() : (existingLead?.statusChangedAt || nowISOString()),
     created_at: editId ? (state.leads.find(l=>l.id===editId)?.createdAt || nowISOString()) : nowISOString(),
     followup_date: status === 'followup' ? document.getElementById('lead-followup-date').value : null,
@@ -996,13 +1005,16 @@ async function saveLead(createAnother = false) {
 const localLead = {
     id: lead.id, name: lead.name, city: lead.city, phone: lead.phone, wapp: lead.wapp,
     website: lead.website, report: lead.report, gbpRank: lead.gbp_rank, gbpUrl: lead.gbp_url,
-    reviews: lead.reviews, timing: lead.timing || '', status: lead.status, saleAmount: lead.sale_amount,
+    reviews: lead.reviews, note: lead.note, timing: lead.timing || '', status: lead.status, saleAmount: lead.sale_amount,
     convertedAt: lead.converted_at, createdAt: lead.created_at,
     followupDate: lead.followup_date || '', followupNote: lead.followup_note || '',
     followupTime: lead.followup_time || '', userEmail: lead.user_email,
     timing: lead.timing || '',
-    followupType: lead.followup_type || '',        // ← ADD THIS
-    statusChangedAt: lead.status_changed_at || lead.created_at,  // ← ADD THIS
+    followupType: lead.followup_type || '',
+    statusChangedAt: lead.status_changed_at || lead.created_at,
+    paymentReminderDate: lead.payment_reminder_date || null,
+    paymentRecurring: lead.payment_recurring !== false,
+    unresponsiveFromStage: existingLead?.unresponsiveFromStage || null,
 };
 
   if (editId) {
@@ -1797,25 +1809,28 @@ initParticles();
 
 // ── FOLLOW-UP REMINDERS ──
 function getFollowupLeads() { return state.leads.filter(l => l.status === 'followup' && l.followupDate); }
+function getPaymentReminderLeads() { return state.leads.filter(l => l.status === 'converted' && l.paymentReminderDate); }
+function getOverduePaymentReminders() { const today = todayISO(); return getPaymentReminderLeads().filter(l => l.paymentReminderDate <= today); }
 function getOverdueFollowups() { const today = todayISO(); return getFollowupLeads().filter(l => l.followupDate <= today); }
 function getTodayFollowups() { const today = todayISO(); return getFollowupLeads().filter(l => l.followupDate === today); }
 
 function updateFollowupBell() {
   const overdue = getOverdueFollowups();
   const today = getTodayFollowups();
+  const paymentDue = getOverduePaymentReminders();
   const all = [...overdue, ...today.filter(l => !overdue.find(o => o.id === l.id))];
+  const totalCount = all.length + paymentDue.length;
   const dot = document.getElementById('followup-bell-dot');
   const badge = document.getElementById('followup-badge-count');
   if (!dot) return;
-  if (all.length > 0) {
+  if (totalCount > 0) {
     dot.style.display = 'block';
-    if (badge) { badge.textContent = all.length; badge.style.display = ''; }
+    if (badge) { badge.textContent = totalCount; badge.style.display = ''; }
   } else {
     dot.style.display = 'none';
     if (badge) badge.style.display = 'none';
   }
 }
-
 function toggleFollowupPopup() {
   const popup = document.getElementById('followup-popup');
   if (!popup) return;
@@ -1965,12 +1980,32 @@ function getFollowupTemplate(note) {
 function renderFollowupPopup() {
   const today = todayISO();
   const all = getFollowupLeads().sort((a, b) => a.followupDate > b.followupDate ? 1 : -1);
+  const paymentDue = getOverduePaymentReminders().sort((a, b) => a.paymentReminderDate > b.paymentReminderDate ? 1 : -1);
   const list = document.getElementById('followup-popup-list');
-  if (!all.length) {
+  if (!all.length && !paymentDue.length) {
     list.innerHTML = `<div class="empty-state"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><p>No follow-ups scheduled</p></div>`;
     return;
   }
-  list.innerHTML = all.map(l => {
+  const paymentHTML = paymentDue.map(l => {
+    const isOverdue = l.paymentReminderDate < today;
+    const label = isOverdue ? '🔴 Overdue' : '🟡 Today';
+    const dateDisplay = new Date(l.paymentReminderDate + 'T00:00:00').toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+    return `
+      <div style="padding:12px;border-radius:10px;border:1px solid ${isOverdue ? 'var(--red)' : 'var(--amber)'};background:${isOverdue ? 'var(--red-soft)' : 'var(--amber-soft)'};margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">💳 ${esc(l.name)} <span style="font-size:10px;font-weight:600;color:var(--text3)">· Other</span></div>
+          <span style="font-size:11px;font-weight:600">${label}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px">📅 Payment due ${dateDisplay}${l.city ? ' · 📍 ' + esc(l.city) : ''}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${l.wapp ? `<a href="https://wa.me/${l.wapp.replace(/\D/g,'')}" target="_blank" class="btn btn-success" style="padding:4px 10px;font-size:11.5px">WhatsApp</a>` : ''}
+          ${l.phone ? `<a href="tel:${esc(l.phone)}" class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">Call</a>` : ''}
+          <button class="btn btn-primary" style="padding:4px 10px;font-size:11.5px;background:var(--green)" onclick="markPaymentReminded('${l.id}')">✓ Received</button>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px;border-color:var(--amber);color:var(--amber)" onclick="postponePaymentReminder('${l.id}')">⏱ Postpone</button>
+        </div>
+      </div>`;
+  }).join('');
+  list.innerHTML = paymentHTML + all.map(l => {
     const isOverdue = l.followupDate < today;
     const isToday = l.followupDate === today;
     const borderColor = isOverdue ? 'var(--red)' : isToday ? 'var(--amber)' : 'var(--border2)';
@@ -3162,8 +3197,9 @@ function openConvertModal(leadId) {
   document.getElementById('convert-lead-name').textContent = lead?.name || '';
   document.getElementById('convert-date').value = todayISO();   
   document.getElementById('convert-txn').value = '';            
-  document.querySelectorAll('.convert-plan-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById('convert-custom-row').style.display = 'none';
+document.getElementById('convert-payment-reminder').value = todayISO();
+  document.getElementById('convert-payment-recurring').checked = true;
+  document.querySelectorAll('.convert-plan-card').forEach(c => c.classList.remove('selected'));  document.getElementById('convert-custom-row').style.display = 'none';
   document.getElementById('convert-custom-amount').value = '';
   document.getElementById('convert-selected-display').style.display = 'none';
   document.getElementById('convert-err').textContent = '';
@@ -3199,13 +3235,15 @@ async function confirmConvert() {
 
   closeModal('modal-convert');
 
-  const lead = state.leads.find(l => l.id === _convertLeadId);
+ const lead = state.leads.find(l => l.id === _convertLeadId);
   if (!lead) return;
   const oldStatus = lead.status;
   lead.status = 'converted';
   lead.saleAmount = amount;
   lead.convertedAt = nowISOString();
   lead.statusChangedAt = nowISOString();
+   lead.paymentReminderDate = document.getElementById('convert-payment-reminder').value || todayISO();
+  lead.paymentRecurring = document.getElementById('convert-payment-recurring').checked;
 
   const { supaUrl, supaKey } = state.settings;
   try {
@@ -3213,7 +3251,7 @@ async function confirmConvert() {
       await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ status: 'converted', sale_amount: amount, converted_at: lead.convertedAt, status_changed_at: lead.statusChangedAt })
+        body: JSON.stringify({ status: 'converted', sale_amount: amount, converted_at: lead.convertedAt, status_changed_at: lead.statusChangedAt, payment_reminder_date: lead.paymentReminderDate })
       });
       const txn = document.getElementById('convert-txn').value.trim();
       const sale = { id: uid(), lead_id: lead.id, lead_name: lead.name, amount, transaction_id: txn, date: todayISO(), note: 'Auto-added on conversion', created_at: nowISOString(), user_email: state.user?.email || '' };
@@ -3769,6 +3807,52 @@ function dismissSocialReminder() {
   setTimeout(() => popup.remove(), 250);
 }
 
+async function markPaymentReminded(leadId) {
+  const lead = state.leads.find(l => l.id === leadId);
+  if (!lead) return;
+
+  let nextDate = null;
+  if (lead.paymentRecurring !== false) {
+    const base = new Date((lead.paymentReminderDate || todayISO()) + 'T00:00:00');
+    base.setMonth(base.getMonth() + 1); // advance exactly 1 month
+    nextDate = base.toISOString().slice(0, 10);
+  }
+  lead.paymentReminderDate = nextDate; // status untouched either way
+
+  save(); syncAndRender();
+  toast(nextDate ? `Payment received — next reminder set for ${nextDate}` : `Payment marked received for ${lead.name}`);
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ payment_reminder_date: nextDate })
+      });
+    } catch(e) { console.error('Payment reminder advance error:', e); }
+  }
+}
+
+async function postponePaymentReminder(leadId) {
+  const lead = state.leads.find(l => l.id === leadId);
+  if (!lead) return;
+  const newDate = prompt('New payment reminder date (YYYY-MM-DD):', lead.paymentReminderDate || todayISO());
+  if (!newDate) return;
+  lead.paymentReminderDate = newDate; // status untouched
+  save(); syncAndRender();
+  toast(`Payment reminder moved to ${newDate}`);
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ payment_reminder_date: newDate })
+      });
+    } catch(e) { console.error('Payment reminder postpone error:', e); }
+  }
+}
 // ══════════════════════════════════════
 // ── END SOCIAL MEDIA MANAGER ──
 // ══════════════════════════════════════
