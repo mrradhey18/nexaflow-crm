@@ -314,8 +314,9 @@ async function fetchAllFromSupabase() {
       followupType: r.followup_type || '', followupAmount: r.followup_amount || 0,
       createdAt: r.created_at, statusChangedAt: r.status_changed_at || r.created_at,
         userEmail: r.user_email, timing: r.timing || '',
-        unresponsiveFromStage: r.unresponsive_from_stage || null,
-         paymentReminderDate: r.payment_reminder_date || null,
+          unresponsiveFromStage: r.unresponsive_from_stage || null,
+        paymentReminderDate: r.payment_reminder_date || null,
+        socialClientOnBreak: r.social_client_on_break || false,
         paymentRecurring: r.payment_recurring !== false
       }));
     }
@@ -1613,6 +1614,29 @@ async function saveSale() {
   save(); closeModal('modal-sale'); renderSales(); renderHome(); toast('Sale added!');
 }
 
+let salesViewMode = 'month'; // 'month' | 'quarter' | 'all'
+let salesViewMonth = new Date().getMonth();   // 0-11
+let salesViewYear = new Date().getFullYear();
+let salesViewQuarter = Math.floor(new Date().getMonth() / 3) + 1; // 1-4
+
+function setSalesView(mode) {
+  salesViewMode = mode;
+  renderSales();
+}
+
+function changeSalesPeriod(dir) {
+  if (salesViewMode === 'month') {
+    salesViewMonth += dir;
+    if (salesViewMonth < 0) { salesViewMonth = 11; salesViewYear--; }
+    if (salesViewMonth > 11) { salesViewMonth = 0; salesViewYear++; }
+  } else if (salesViewMode === 'quarter') {
+    salesViewQuarter += dir;
+    if (salesViewQuarter < 1) { salesViewQuarter = 4; salesViewYear--; }
+    if (salesViewQuarter > 4) { salesViewQuarter = 1; salesViewYear++; }
+  }
+  renderSales();
+}
+
 function renderSales() {
   const sales = state.sales || [];
   const now = new Date();
@@ -1647,10 +1671,47 @@ function renderSales() {
   if (todayAmt) todayAmt.textContent = '₹' + fmtNum(todayTotal);
   if (todayCount) todayCount.textContent = todaySales.length + ' deal' + (todaySales.length !== 1 ? 's' : '');
 
-  const tb = document.getElementById('sales-tbody');
-  if (!sales.length) { tb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>No sales yet</p></div></td></tr>`; return; }
+const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-  tb.innerHTML = [...sales].reverse().map(s => `
+  let periodSales;
+  let periodLabel;
+  if (salesViewMode === 'all') {
+    periodSales = sales;
+    periodLabel = 'All Time';
+  } else if (salesViewMode === 'quarter') {
+    periodSales = sales.filter(x => x.date && getQuarter(x.date) === salesViewQuarter && new Date(x.date).getFullYear() === salesViewYear);
+    periodLabel = `Q${salesViewQuarter} ${salesViewYear}`;
+  } else {
+    periodSales = sales.filter(x => {
+      if (!x.date) return false;
+      const d = new Date(x.date);
+      return d.getMonth() === salesViewMonth && d.getFullYear() === salesViewYear;
+    });
+    periodLabel = `${monthNames[salesViewMonth]} ${salesViewYear}`;
+  }
+
+  const periodNav = document.getElementById('sales-period-nav');
+  if (periodNav) periodNav.style.display = salesViewMode === 'all' ? 'none' : '';
+  const periodLabelEl = document.getElementById('sales-period-label');
+  if (periodLabelEl) periodLabelEl.textContent = periodLabel;
+
+  document.querySelectorAll('.sales-view-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === salesViewMode));
+
+  const periodTotal = periodSales.reduce((s, x) => s + (x.amount || 0), 0);
+  const periodTotalEl = document.getElementById('sales-period-total');
+  if (periodTotalEl) periodTotalEl.textContent = '₹' + fmtNum(periodTotal) + ' · ' + periodSales.length + ' deal' + (periodSales.length !== 1 ? 's' : '');
+
+  const tb = document.getElementById('sales-tbody');
+  if (!periodSales.length) { tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><p>No sales in this period</p></div></td></tr>`; return; }
+
+  const sorted = [...periodSales].sort((a, b) => {
+    const da = a.date || '';
+    const db = b.date || '';
+    if (da !== db) return db.localeCompare(da); // latest date first
+    return (b.created_at || '').localeCompare(a.created_at || ''); // tie-break: latest entry first
+  });
+
+  tb.innerHTML = sorted.map(s => `
     <tr>
       <td class="td-name">${esc(s.lead_name)}</td>
       <td style="color:var(--green);font-weight:600">₹${fmtNum(s.amount)}</td>
@@ -3323,7 +3384,10 @@ function renderSocialClientSelect() {
   const current = sel.value;
   const clients = state.leads.filter(l => l.status !== 'suspended' && l.isSocialClient).sort((a,b) => a.name.localeCompare(b.name));
   sel.innerHTML = '<option value="">-- Choose a client --</option>' +
-    clients.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+    clients.map(l => l.socialClientOnBreak
+      ? `<option value="${l.id}" style="color:#94a3b8">⏸ ${esc(l.name)} — On Break</option>`
+      : `<option value="${l.id}">${esc(l.name)}</option>`
+    ).join('');
   if (current) sel.value = current;
 }
 
@@ -3350,7 +3414,13 @@ function loadClientSocialData() {
   document.getElementById('sc-gbp').textContent = lead.gbpRank || '—';
   document.getElementById('sc-status').textContent = statusLabel(lead.status);
   document.getElementById('sc-reviews').textContent = lead.reviews || '—';
-  document.getElementById('social-client-goals').value = lead.socialGoals || '';
+   document.getElementById('social-client-goals').value = lead.socialGoals || '';
+
+  const breakBanner = document.getElementById('social-client-break-banner');
+  if (breakBanner) breakBanner.style.display = lead.socialClientOnBreak ? '' : 'none';
+
+  const gearBtn = document.getElementById('social-client-gear-btn');
+  if (gearBtn) gearBtn.style.display = '';
 
   detailsEl.style.display = '';
   plannerEl.style.display = '';
@@ -3358,7 +3428,6 @@ function loadClientSocialData() {
 
   renderSocialPosts();
 }
-
 async function saveClientGoals() {
   const id = socialSelectedClientId;
   if (!id) return;
@@ -3413,6 +3482,110 @@ async function confirmAddSocialClient() {
   toast(`${lead.name} added as a Social Media client!`);
 }
 
+function toggleSocialClientSettings(e) {
+  e.stopPropagation();
+  const popup = document.getElementById('social-client-settings-popup');
+  if (!popup) return;
+  const isOpen = popup.style.display === 'block';
+  popup.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderSocialClientSettingsMenu();
+}
+
+function closeSocialClientSettings() {
+  const popup = document.getElementById('social-client-settings-popup');
+  if (popup) popup.style.display = 'none';
+}
+
+document.addEventListener('click', function(e) {
+  const popup = document.getElementById('social-client-settings-popup');
+  const btn = document.getElementById('social-client-gear-btn');
+  if (popup && popup.style.display === 'block' && !popup.contains(e.target) && e.target !== btn) {
+    popup.style.display = 'none';
+  }
+});
+
+function renderSocialClientSettingsMenu() {
+  const lead = state.leads.find(l => l.id === socialSelectedClientId);
+  if (!lead) return;
+  const menu = document.getElementById('social-client-settings-popup');
+  menu.innerHTML = lead.socialClientOnBreak
+    ? `<button class="status-menu-item" onclick="retrieveClientFromBreak()">▶️ Retrieve from Break</button>
+       <button class="status-menu-item" style="color:var(--red)" onclick="removeSocialClient()">🗑 Remove Client</button>`
+    : `<button class="status-menu-item" onclick="putClientOnBreak()">⏸ Put on Break</button>
+       <button class="status-menu-item" style="color:var(--red)" onclick="removeSocialClient()">🗑 Remove Client</button>`;
+}
+
+async function putClientOnBreak() {
+  const lead = state.leads.find(l => l.id === socialSelectedClientId);
+  if (!lead) return;
+  lead.socialClientOnBreak = true;
+  closeSocialClientSettings();
+  save(); renderSocialClientSelect(); loadClientSocialData();
+  toast(`${lead.name} put on break`);
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ social_client_on_break: true })
+      });
+    } catch(e) { console.error('Break save error:', e); }
+  }
+}
+
+async function retrieveClientFromBreak() {
+  const lead = state.leads.find(l => l.id === socialSelectedClientId);
+  if (!lead) return;
+  lead.socialClientOnBreak = false;
+  closeSocialClientSettings();
+  save(); renderSocialClientSelect(); loadClientSocialData();
+  toast(`${lead.name} retrieved from break`);
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ social_client_on_break: false })
+      });
+    } catch(e) { console.error('Retrieve save error:', e); }
+  }
+}
+
+async function removeSocialClient() {
+  const lead = state.leads.find(l => l.id === socialSelectedClientId);
+  if (!lead) return;
+  if (!confirm(`Remove "${lead.name}" as a Social Media client?\n\nThey'll disappear from this section entirely. Their lead record and past posts are kept, not deleted.`)) {
+    closeSocialClientSettings();
+    return;
+  }
+  lead.isSocialClient = false;
+  lead.socialClientOnBreak = false;
+  closeSocialClientSettings();
+
+  socialSelectedClientId = '';
+  document.getElementById('social-client-select').value = '';
+  document.getElementById('social-client-details').style.display = 'none';
+  document.getElementById('social-planner-wrap').style.display = 'none';
+  document.getElementById('social-no-client-empty').style.display = '';
+
+  save(); renderSocialClientSelect();
+  toast(`${lead.name} removed from Social Media clients`);
+
+  const { supaUrl, supaKey } = state.settings;
+  if (supaKey) {
+    try {
+      await fetch(`${supaUrl}/rest/v1/leads?id=eq.${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': supaKey, 'Authorization': 'Bearer ' + supaKey, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ is_social_client: false, social_client_on_break: false })
+      });
+    } catch(e) { console.error('Remove client save error:', e); }
+  }
+}
 // ── VIEW SWITCH ──
 function switchSocialView(view) {
   socialCurrentView = view;
