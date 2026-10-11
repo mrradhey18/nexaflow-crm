@@ -235,6 +235,11 @@ nav {
 .btn-primary:hover { background: #3b7fe3; }
 
 .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
+.sales-view-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
 .btn-ghost:hover { background: var(--surface2); color: var(--text); }
 
 .btn-danger { background: var(--red-soft); color: var(--red); border: 1px solid transparent; }
