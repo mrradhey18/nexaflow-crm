@@ -469,9 +469,23 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
             Sales
           </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div id="today-sales-widget" style="display:flex;align-items:center;gap:10px;padding:8px 16px;background:linear-gradient(135deg,#f59e0b18,#f59e0b08);border:1px solid #f59e0b33;border-radius:12px;position:relative;overflow:hidden">
-              <div style="position:relative;width:36px;height:36px;flex-shrink:0">
+           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:3px">
+              <button class="btn btn-ghost sales-view-btn active" data-mode="month" onclick="setSalesView('month')" style="padding:5px 10px;font-size:12px">Month</button>
+              <button class="btn btn-ghost sales-view-btn" data-mode="quarter" onclick="setSalesView('quarter')" style="padding:5px 10px;font-size:12px">Quarter</button>
+              <button class="btn btn-ghost sales-view-btn" data-mode="all" onclick="setSalesView('all')" style="padding:5px 10px;font-size:12px">All Time</button>
+            </div>
+            <div id="sales-period-nav" style="display:flex;align-items:center;gap:4px">
+              <button class="icon-btn" onclick="changeSalesPeriod(-1)" style="width:26px;height:26px">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
+              </button>
+              <span id="sales-period-label" style="font-size:12.5px;font-weight:600;color:var(--text);min-width:90px;text-align:center"></span>
+              <button class="icon-btn" onclick="changeSalesPeriod(1)" style="width:26px;height:26px">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg>
+              </button>
+            </div>
+            <span id="sales-period-total" style="font-size:12.5px;font-weight:600;color:var(--green)"></span>
+            <div id="today-sales-widget" style="display:flex;align-items:center;gap:10px;padding:8px 16px;background:linear-gradient(135deg,#f59e0b18,#f59e0b08);border:1px solid #f59e0b33;border-radius:12px;position:relative;overflow:hidden">              <div style="position:relative;width:36px;height:36px;flex-shrink:0">
                 <svg viewBox="0 0 36 36" style="width:36px;height:36px">
                   <ellipse cx="18" cy="28" rx="12" ry="4" fill="#f59e0b" opacity="0.4"/>
                   <ellipse cx="18" cy="27" rx="12" ry="4" fill="#fbbf24"/>
@@ -568,12 +582,18 @@
         </div>
         <div class="form-row" style="margin-bottom:0">
           <div class="form-group">
-            <label>Select Client</label>
+           <label>Select Client</label>
             <button class="btn btn-primary" style="margin-left:auto" onclick="openAddSocialClientModal()">+ Add Client</button>
-            <select id="social-client-select" onchange="loadClientSocialData()">
-              <option value="">-- Choose a client --</option>
-            </select>
-          </div>
+            <div style="display:flex;align-items:center;gap:8px;position:relative">
+              <select id="social-client-select" onchange="loadClientSocialData()" style="flex:1">
+                <option value="">-- Choose a client --</option>
+              </select>
+              <button class="icon-btn" id="social-client-gear-btn" onclick="toggleSocialClientSettings(event)" style="display:none;flex-shrink:0" title="Client settings">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              </button>
+              <div id="social-client-settings-popup" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 8px 24px #00000040;z-index:999;min-width:180px;overflow:hidden"></div>
+            </div>
+</parameter>          </div>
           <div class="form-group">
             <label>&nbsp;</label>
             <div style="font-size:12px;color:var(--text3);padding-top:8px">Clients come from your existing Leads list. Add clients from the Leads page.</div>
@@ -600,7 +620,11 @@
           </div>
         </div>
         
-        <!-- CLIENT DETAILS (read-only, sourced from Leads) -->
+    
+       <div id="social-client-break-banner" style="display:none;margin-top:16px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;font-size:12.5px;color:var(--text2);display:flex;align-items:center;gap:8px">
+          ⏸ This client is currently on break — no reminders or active planning expected until retrieved.
+        </div>
+      
         <div id="social-client-details" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
           <div class="form-row three">
             <div>
